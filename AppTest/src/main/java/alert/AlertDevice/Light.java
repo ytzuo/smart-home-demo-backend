@@ -5,7 +5,7 @@ import com.example.alert.AlertStart;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-public class Light implements Device{
+public class Light implements Device {
     private String deviceId;
     private String deviceType="灯";
     private boolean isOn=false;//模拟灯的开闭

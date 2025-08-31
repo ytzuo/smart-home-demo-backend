@@ -1,4 +1,4 @@
-package com.example.alert.idl;
+package HomeSimulator.idl;
 
 
 public class Presence{

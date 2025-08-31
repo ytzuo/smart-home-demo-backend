@@ -1,9 +1,10 @@
-package com.example.alert.idl;
+package CarSimulator.idl;
 
 import com.zrdds.infrastructure.*;
-import com.zrdds.topic.TypeSupport;
 import com.zrdds.publication.DataWriter;
 import com.zrdds.subscription.DataReader;
+import com.zrdds.topic.TypeSupport;
+
 import java.io.UnsupportedEncodingException;
 
 public class AlertTypeSupport extends TypeSupport {

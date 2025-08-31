@@ -1,4 +1,4 @@
-package alert.AlertDevice.dds;
+package alert.dds;
 
 import com.example.alert.idl.Alert;
 import com.example.alert.idl.AlertDataReader;

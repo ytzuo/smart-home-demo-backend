@@ -12,13 +12,13 @@ public class Command{
 
     }
 
-    public Command(Command other){
+    public Command(CarSimulator.Command other){
         this();
         copy(other);
     }
 
     public Object copy(Object src) {
-        Command typedSrc = (Command)src;
+        CarSimulator.Command typedSrc = (CarSimulator.Command)src;
         this.deviceId =  typedSrc.deviceId;
         this.deviceType =  typedSrc.deviceType;
         this.action =  typedSrc.action;

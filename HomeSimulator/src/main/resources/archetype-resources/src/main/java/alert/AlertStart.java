@@ -3,9 +3,9 @@ package com.example.alert;
 import com.example.alert.dds.AlertPublisher;
 import com.example.alert.dds.AlertSubscriber;
 import com.example.alert.dds.DdsParticipant;
-import com.example.alert.AlertDevice.AirConditioner;
-import com.example.alert.AlertDevice.Fridge;
-import com.example.alert.AlertDevice.Light;
+import alert.AlertDevice.AirConditioner;
+import alert.AlertDevice.Fridge;
+import alert.AlertDevice.Light;
 import com.example.alert.idl.AlertTypeSupport;
 import com.zrdds.topic.Topic;
 

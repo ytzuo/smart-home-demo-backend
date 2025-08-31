@@ -1,17 +1,15 @@
-package AppSimulator;
-
 import com.example.alert.AlertDevice.AirConditioner;
 import com.example.alert.AlertDevice.Fridge;
 import com.example.alert.AlertDevice.Light;
-import com.example.alert.dds.AlertPublisher;
-import com.example.alert.dds.AlertSubscriber;
-import com.example.alert.dds.DdsParticipant;
+import com.exam.alert.dds.DdsParticipant;
 import com.example.alert.idl.AlertTypeSupport;
 import com.zrdds.topic.Topic;
 
 import java.util.Scanner;
 
-public class AlertStart {
+public class AlertStart {ple.alert.dds.AlertPublisher;
+import com.example.alert.dds.AlertSubscriber;
+import com.example
 
     //设置一个变量，用于控制是否发布警告
     public static boolean isPublishAlert=false;

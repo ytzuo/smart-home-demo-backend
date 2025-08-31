@@ -1,4 +1,4 @@
-package alert.AlertDevice.idl;
+package alert.idl;
 
 import com.zrdds.publication.DataWriterImpl;
 

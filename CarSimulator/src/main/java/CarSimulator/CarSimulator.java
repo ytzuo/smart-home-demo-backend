@@ -1,14 +1,5 @@
 package CarSimulator;
 
-import com.zrdds.domain.*;
-import com.zrdds.infrastructure.*;
-import com.zrdds.publication.*;
-import com.zrdds.subscription.*;
-import com.zrdds.topic.Topic;
-import CarSimulator.VehicleStatus;
-import CarSimulator.VehicleStatusDataWriter;
-import CarSimulator.VehicleStatusTypeSupport;
-import CarSimulator.Command;
 import CarSimulator.DDS.VehicleCommandReceiver;
 
 import java.util.Scanner;
@@ -19,8 +10,6 @@ public class CarSimulator {
     private static boolean hasLoad = false;
     
     private VehicleStatus vehicleStatus;
-    private DomainParticipant domainParticipant;
-    private CarSimulatorPublication publication;
     private VehicleCommandReceiver commandReceiver;
 
     private AtomicBoolean running;
@@ -39,35 +28,14 @@ public class CarSimulator {
     }
 
     public void initDDS() {
-        try {
-            domainParticipant = DomainParticipantFactory.get_instance()
-                    .create_participant(DOMAIN_ID,
-                            DomainParticipantFactory.PARTICIPANT_QOS_DEFAULT,
-                            null,
-                            StatusKind.STATUS_MASK_NONE);
-            if (domainParticipant == null) {
-                System.err.println("创建DomainParticipant失败");
-                return;
-            }
-
-            publication = new CarSimulatorPublication(domainParticipant);
-            publication.init();
-
-            commandReceiver = new VehicleCommandReceiver(DOMAIN_ID, this);
-            commandReceiver.init();
-
-            System.out.println("DDS初始化成功");
-        } catch (Exception e) {
-            System.err.println("DDS初始化异常: " + e.getMessage());
-            e.printStackTrace();
-        }
+        commandReceiver = new VehicleCommandReceiver(DOMAIN_ID, this);
+        commandReceiver.init();
+        System.out.println("DDS初始化成功");
     }
 
     public void start() {
         initDDS();
-        publishVehicleStatus();
         startStatusUpdateThread();
-        startStatusPublicationThread();
         startUserInputThread();
     }
 
@@ -93,20 +61,7 @@ public class CarSimulator {
         statusUpdateThread.start();
     }
 
-    private void startStatusPublicationThread() {
-        statusPublicationThread = new Thread(() -> {
-            System.out.println("状态发布线程已启动");
-            try {
-                while (running.get()) {
-                    publishVehicleStatus();
-                    Thread.sleep(15000);
-                }
-            } catch (InterruptedException e) {
-                System.out.println("状态发布线程被中断");
-            }
-        });
-        statusPublicationThread.start();
-    }
+
 
     private void startUserInputThread() {
         Thread inputThread = new Thread(() -> {
@@ -118,7 +73,6 @@ public class CarSimulator {
                     "4: 解锁车门\n" +
                     "5: 设置油量\n" +
                     "6: 设置位置\n" +
-                    "7: 手动发送当前状态\n" +
                     "0: 退出");
 
             while (running.get()) {
@@ -157,10 +111,7 @@ public class CarSimulator {
                         vehicleStatus.location = scanner.nextLine();
                         System.out.println("位置已设置为: " + vehicleStatus.location);
                         break;
-                    case "7":
-                        publishVehicleStatus();
-                        System.out.println("手动发送状态成功");
-                        break;
+
                     case "0":
                         System.out.println("正在退出程序...");
                         shutdown();
@@ -173,12 +124,7 @@ public class CarSimulator {
         inputThread.start();
     }
 
-    private void publishVehicleStatus() {
-        if (publication != null) {
-            vehicleStatus.timeStamp = String.valueOf(System.currentTimeMillis() / 1000L);
-            publication.publish(vehicleStatus);
-        }
-    }
+
 
     public VehicleStatus getVehicleStatus() {
         return vehicleStatus;
@@ -191,23 +137,12 @@ public class CarSimulator {
                 statusUpdateThread.interrupt();
                 statusUpdateThread.join(1000);
             }
-            if (statusPublicationThread != null) {
-                statusPublicationThread.interrupt();
-                statusPublicationThread.join(1000);
-            }
         } catch (InterruptedException e) {
             System.err.println("等待线程结束时发生中断: " + e.getMessage());
         }
 
-        if (publication != null) {
-            publication.close();
-        }
         if (commandReceiver != null) {
             commandReceiver.close();
-        }
-        if (domainParticipant != null) {
-            domainParticipant.delete_contained_entities();
-            DomainParticipantFactory.get_instance().delete_participant(domainParticipant);
         }
 
         System.out.println("车辆模拟器已关闭");

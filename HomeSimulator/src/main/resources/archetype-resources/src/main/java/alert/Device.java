@@ -1,4 +1,4 @@
-package com.example.alert.AlertDevice;
+package alert;
 
 public interface Device extends Runnable{
     String getDeviceId();

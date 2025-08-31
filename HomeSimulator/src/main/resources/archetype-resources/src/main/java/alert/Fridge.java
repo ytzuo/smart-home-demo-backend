@@ -1,12 +1,13 @@
-package com.example.alert.AlertDevice;
+package alert;
 
+import alert.AlertDevice.Device;
 import com.example.alert.AlertStart;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class Fridge implements Device{
+public class Fridge implements Device {
     private String deviceId;
     private String deviceType="冰箱";
     private int temperature;

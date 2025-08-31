@@ -1,5 +1,6 @@
-package com.example.alert.AlertDevice;
+package alert;
 
+import alert.AlertDevice.Device;
 import com.example.alert.AlertStart;
 
 import java.util.ArrayList;

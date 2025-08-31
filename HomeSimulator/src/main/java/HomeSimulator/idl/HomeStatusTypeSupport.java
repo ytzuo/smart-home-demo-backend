@@ -1,9 +1,10 @@
-package com.example.alert.idl;
+package HomeSimulator.idl;
 
 import com.zrdds.infrastructure.*;
-import com.zrdds.topic.TypeSupport;
 import com.zrdds.publication.DataWriter;
 import com.zrdds.subscription.DataReader;
+import com.zrdds.topic.TypeSupport;
+
 import java.io.UnsupportedEncodingException;
 
 public class HomeStatusTypeSupport extends TypeSupport {
