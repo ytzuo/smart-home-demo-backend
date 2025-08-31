@@ -1,4 +1,4 @@
-package com.example.alert.idl;
+package HomeSimulatorIDL;
 
 
 public class Command{

@@ -1,4 +1,4 @@
-package com.example.alert.idl;
+package CarSimulatorIDL;
 
 
 public class Command{

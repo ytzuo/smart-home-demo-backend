@@ -1,164 +1,242 @@
 package CarSimulator;
 
-import CarSimulator.DDS.VehicleCommandReceiver;
+import CarSimulator.DDS.CommandSubscriber;
+import CarSimulator.DDS.DdsParticipant;
+import CarSimulator.DDS.StatusPublisher;
+import AppTestIDL.Command;
+import AppTestIDL.CommandTypeSupport;
+import AppTestIDL.VehicleStatusTypeSupport;
+import com.zrdds.topic.Topic;
 
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CarSimulator {
-    private static final int DOMAIN_ID = 80;
     private static boolean hasLoad = false;
-    
-    private VehicleStatus vehicleStatus;
-    private VehicleCommandReceiver commandReceiver;
 
+    private CommandSubscriber commandSubscriber;
+    private StatusPublisher statusPublisher;
+    private DdsParticipant ddsParticipant;
     private AtomicBoolean running;
-    private Thread statusUpdateThread;
-    private Thread statusPublicationThread;
+    
+    // 车辆状态
+    private boolean engineOn = false;
+    private boolean doorsLocked = true;
+    private float fuelPercent = 100.0f;
 
     public CarSimulator() {
         loadLibrary();
-        vehicleStatus = new VehicleStatus();
-        vehicleStatus.engineOn = false;
-        vehicleStatus.doorsLocked = true;
-        vehicleStatus.fuelPercent = 100.0f;
-        vehicleStatus.location = "HomeBase";
-        vehicleStatus.timeStamp = String.valueOf(System.currentTimeMillis() / 1000L);
         running = new AtomicBoolean(true);
     }
 
-    public void initDDS() {
-        commandReceiver = new VehicleCommandReceiver(DOMAIN_ID, this);
-        commandReceiver.init();
-        System.out.println("DDS初始化成功");
+    private void initDDS() {
+        ddsParticipant = DdsParticipant.getInstance();
+
+        // 注册IDL类型
+        CommandTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "Command");
+        VehicleStatusTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "VehicleStatus");
+
+        // 创建Topic
+        Topic commandTopic = ddsParticipant.createTopic("Command", CommandTypeSupport.get_instance());
+        Topic vehicleStatusTopic = ddsParticipant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
+
+        // 初始化Subscriber和Publisher
+        commandSubscriber = new CommandSubscriber();
+        commandSubscriber.setCommandHandler(this::handleCommand);
+        commandSubscriber.start(ddsParticipant.getSubscriber(), commandTopic);
+
+        statusPublisher = new StatusPublisher();
+        statusPublisher.start(ddsParticipant.getPublisher(), vehicleStatusTopic);
+
+        // 初始状态上报
+        statusPublisher.publishVehicleStatus(engineOn, doorsLocked, fuelPercent);
+
+        System.out.println("Car DDS 初始化完成");
     }
 
     public void start() {
         initDDS();
-        startStatusUpdateThread();
-        startUserInputThread();
+        startUserInterface();
     }
 
-    private void startStatusUpdateThread() {
-        statusUpdateThread = new Thread(() -> {
-            System.out.println("状态更新线程已启动");
-            try {
-                while (running.get()) {
-                    if (vehicleStatus.engineOn) {
-                        vehicleStatus.fuelPercent = Math.max(0, vehicleStatus.fuelPercent - 0.1f);
-                        if (vehicleStatus.fuelPercent <= 0) {
-                            vehicleStatus.engineOn = false;
-                            System.out.println("油量耗尽，发动机自动关闭");
+    private void startUserInterface() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("=== 车辆模拟器 ===");
+        System.out.println("车辆已启动，等待App指令...");
+        System.out.println("本地控制命令:");
+        System.out.println("1. 启动发动机");
+        System.out.println("2. 关闭发动机");
+        System.out.println("3. 锁车");
+        System.out.println("4. 解锁");
+        System.out.println("5. 加油");
+        System.out.println("0. 退出");
+        System.out.println("====================");
+
+        while (running.get()) {
+            System.out.print("\n请输入本地命令> ");
+            String cmd = scanner.nextLine();
+
+            switch (cmd) {
+                case "1":
+                    startEngine();
+                    break;
+                case "2":
+                    stopEngine();
+                    break;
+                case "3":
+                    lockDoors();
+                    break;
+                case "4":
+                    unlockDoors();
+                    break;
+                case "5":
+                    refuel();
+                    break;
+                case "0":
+                    shutdown();
+                    break;
+                default:
+                    System.out.println("无效命令，请重新输入");
+                    showCurrentStatus();
+            }
+        }
+    }
+
+    private void handleCommand(Command command) {
+        if (command == null || command.deviceType == null || command.action == null) {
+            return;
+        }
+
+        // 只处理car相关的命令
+        if (!"car".equalsIgnoreCase(command.deviceType)) {
+            return;
+        }
+
+        System.out.println("处理App命令: " + command.action);
+        
+        switch (command.action.toLowerCase()) {
+            case "engine_on":
+                startEngine();
+                break;
+            case "engine_off":
+                stopEngine();
+                break;
+            case "lock":
+                lockDoors();
+                break;
+            case "unlock":
+                unlockDoors();
+                break;
+            default:
+                System.out.println("未知命令: " + command.action);
+        }
+    }
+
+    private void startEngine() {
+        if (fuelPercent <= 0) {
+            System.out.println("油量不足，无法启动发动机！");
+            return;
+        }
+        
+        if (!engineOn) {
+            engineOn = true;
+            System.out.println("发动机已启动");
+            statusPublisher.updateEngineStatus(true);
+            
+            // 模拟油耗
+            new Thread(() -> {
+                while (engineOn && fuelPercent > 0) {
+                    try {
+                        Thread.sleep(5000); // 每5秒消耗1%油量
+                        fuelPercent = Math.max(0, fuelPercent - 1.0f);
+                        statusPublisher.updateFuelLevel(fuelPercent);
+                        if (fuelPercent <= 10) {
+                            System.out.println("警告：油量过低！当前油量: " + fuelPercent + "%");
                         }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
                     }
-                    vehicleStatus.timeStamp = String.valueOf(System.currentTimeMillis() / 1000L);
-                    Thread.sleep(5000);
                 }
-            } catch (InterruptedException e) {
-                System.out.println("状态更新线程被中断");
-            }
-        });
-        statusUpdateThread.start();
+            }).start();
+        } else {
+            System.out.println("发动机已经在运行");
+        }
     }
 
-
-
-    private void startUserInputThread() {
-        Thread inputThread = new Thread(() -> {
-            Scanner scanner = new Scanner(System.in);
-            System.out.println("输入指令控制车辆状态：\n" +
-                    "1: 启动发动机\n" +
-                    "2: 熄火发动机\n" +
-                    "3: 锁车门\n" +
-                    "4: 解锁车门\n" +
-                    "5: 设置油量\n" +
-                    "6: 设置位置\n" +
-                    "0: 退出");
-
-            while (running.get()) {
-                System.out.print("请输入指令编号> ");
-                String cmd = scanner.nextLine();
-
-                switch (cmd) {
-                    case "1":
-                        vehicleStatus.engineOn = true;
-                        System.out.println("发动机已启动");
-                        break;
-                    case "2":
-                        vehicleStatus.engineOn = false;
-                        System.out.println("发动机已熄火");
-                        break;
-                    case "3":
-                        vehicleStatus.doorsLocked = true;
-                        System.out.println("车门已上锁");
-                        break;
-                    case "4":
-                        vehicleStatus.doorsLocked = false;
-                        System.out.println("车门已解锁");
-                        break;
-                    case "5":
-                        System.out.print("请输入油量(0-100)> ");
-                        try {
-                            float fuel = Float.parseFloat(scanner.nextLine());
-                            vehicleStatus.fuelPercent = Math.max(0, Math.min(100, fuel));
-                            System.out.println("油量已设置为: " + vehicleStatus.fuelPercent);
-                        } catch (NumberFormatException e) {
-                            System.out.println("输入无效，请输入0-100之间的数字");
-                        }
-                        break;
-                    case "6":
-                        System.out.print("请输入位置> ");
-                        vehicleStatus.location = scanner.nextLine();
-                        System.out.println("位置已设置为: " + vehicleStatus.location);
-                        break;
-
-                    case "0":
-                        System.out.println("正在退出程序...");
-                        shutdown();
-                        break;
-                    default:
-                        System.out.println("无效指令，请重新输入");
-                }
-            }
-        });
-        inputThread.start();
+    private void stopEngine() {
+        if (engineOn) {
+            engineOn = false;
+            System.out.println("发动机已关闭");
+            statusPublisher.updateEngineStatus(false);
+        } else {
+            System.out.println("发动机已经关闭");
+        }
     }
 
+    private void lockDoors() {
+        if (!doorsLocked) {
+            doorsLocked = true;
+            System.out.println("车门已上锁");
+            statusPublisher.updateDoorStatus(true);
+        } else {
+            System.out.println("车门已经上锁");
+        }
+    }
 
+    private void unlockDoors() {
+        if (doorsLocked) {
+            doorsLocked = false;
+            System.out.println("车门已解锁");
+            statusPublisher.updateDoorStatus(false);
+        } else {
+            System.out.println("车门已经解锁");
+        }
+    }
 
-    public VehicleStatus getVehicleStatus() {
-        return vehicleStatus;
+    private void refuel() {
+        fuelPercent = 100.0f;
+        System.out.println("加油完成，当前油量: 100%");
+        statusPublisher.updateFuelLevel(fuelPercent);
+    }
+
+    private void showCurrentStatus() {
+        System.out.println("\n当前车辆状态:");
+        System.out.println("发动机状态: " + (engineOn ? "运行中" : "已关闭"));
+        System.out.println("车门状态: " + (doorsLocked ? "已上锁" : "已解锁"));
+        System.out.println("油量: " + fuelPercent + "%");
     }
 
     public void shutdown() {
         running.set(false);
-        try {
-            if (statusUpdateThread != null) {
-                statusUpdateThread.interrupt();
-                statusUpdateThread.join(1000);
-            }
-        } catch (InterruptedException e) {
-            System.err.println("等待线程结束时发生中断: " + e.getMessage());
+        
+        if (commandSubscriber != null) {
+            commandSubscriber.stop();
         }
-
-        if (commandReceiver != null) {
-            commandReceiver.close();
+        
+        if (ddsParticipant != null) {
+            ddsParticipant.close();
         }
-
+        
         System.out.println("车辆模拟器已关闭");
         System.exit(0);
     }
 
     private static void loadLibrary() {
         if (!hasLoad) {
-            System.loadLibrary("ZRDDS_JAVA");
-            hasLoad = true;
+            try {
+                System.loadLibrary("ZRDDS_JAVA");
+                hasLoad = true;
+            } catch (UnsatisfiedLinkError e) {
+                System.err.println("警告: 无法加载ZRDDS_JAVA库，DDS功能将不可用");
+                System.err.println("请确保ZRDDS_JAVA库在系统路径中");
+            }
         }
     }
 
     public static void main(String[] args) {
         System.out.println("启动车辆模拟器...");
-        CarSimulator simulator = new CarSimulator();
-        simulator.start();
+        CarSimulator car = new CarSimulator();
+        car.start();
     }
 }

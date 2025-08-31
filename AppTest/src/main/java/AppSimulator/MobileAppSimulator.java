@@ -1,19 +1,22 @@
 package AppSimulator;
 
-import alert.dds.AppCommandPublisher;
-import alert.dds.AppStatusSubscriber;
-import CarSimulator.Command;
-import CarSimulator.VehicleStatus;
+import AppSimulator.DDS.CommandPublisher;
+import AppSimulator.DDS.DdsParticipant;
+import AppSimulator.DDS.StatusSubscriber;
+import AppTestIDL.Command;
+import AppTestIDL.CommandTypeSupport;
+import AppTestIDL.HomeStatusTypeSupport;
+import AppTestIDL.VehicleStatusTypeSupport;
+import com.zrdds.topic.Topic;
 
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MobileAppSimulator {
-    private static final int DOMAIN_ID = 80;
     private static boolean hasLoad = false;
-    
-    private AppCommandPublisher commandPublisher;
-    private AppStatusSubscriber statusSubscriber;
+
+    private CommandPublisher commandPublisher;
+    private StatusSubscriber statusSubscriber;
     private AtomicBoolean running;
 
     public MobileAppSimulator() {
@@ -21,19 +24,27 @@ public class MobileAppSimulator {
         running = new AtomicBoolean(true);
     }
 
-    public void initDDS() {
-        try {
-            commandPublisher = new AppCommandPublisher(DOMAIN_ID);
-            commandPublisher.init();
-            
-            statusSubscriber = new AppStatusSubscriber(DOMAIN_ID, this);
-            statusSubscriber.init();
-            
-            System.out.println("手机App DDS初始化成功");
-        } catch (Exception e) {
-            System.err.println("手机App DDS初始化异常: " + e.getMessage());
-            e.printStackTrace();
-        }
+    private void initDDS() {
+        DdsParticipant participant = DdsParticipant.getInstance();
+
+        // 注册IDL类型
+        CommandTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Command");
+        HomeStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "HomeStatus");
+        VehicleStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleStatus");
+
+        // 创建Topic
+        Topic commandTopic = participant.createTopic("Command", CommandTypeSupport.get_instance());
+        Topic homeStatusTopic = participant.createTopic("HomeStatus", HomeStatusTypeSupport.get_instance());
+        Topic vehicleStatusTopic = participant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
+
+        // 初始化Publisher和Subscriber
+        commandPublisher = new CommandPublisher();
+        commandPublisher.start(participant.getPublisher(), commandTopic);
+
+        statusSubscriber = new StatusSubscriber();
+        statusSubscriber.start(participant.getSubscriber(), homeStatusTopic, vehicleStatusTopic);
+
+        System.out.println("DDS 初始化完成");
     }
 
     public void start() {
@@ -43,17 +54,11 @@ public class MobileAppSimulator {
 
     private void startUserInterface() {
         Scanner scanner = new Scanner(System.in);
-        System.out.println("=== 手机App车辆控制界面 ===");
-        System.out.println("可发送的命令：");
-        System.out.println("1. 启动发动机 (engine 1)");
-        System.out.println("2. 熄火发动机 (engine 0)");
-        System.out.println("3. 锁定车门 (lock 1)");
-        System.out.println("4. 解锁车门 (lock 0)");
-        System.out.println("5. 设置油量 (fuel [0-100])");
-        System.out.println("6. 设置位置 (location [地址])");
-        System.out.println("7. 查看当前状态");
+        System.out.println("=== 手机App控制界面 ===");
+        System.out.println("1. 控制车辆 (car)");
+        System.out.println("2. 控制家居 (home)");
         System.out.println("0. 退出App");
-        System.out.println("==============================");
+        System.out.println("=======================");
 
         while (running.get()) {
             System.out.print("\n请输入命令编号> ");
@@ -61,37 +66,10 @@ public class MobileAppSimulator {
 
             switch (cmd) {
                 case "1":
-                    sendCommand("engine", 1.0f);
+                    handleCarCommands(scanner);
                     break;
                 case "2":
-                    sendCommand("engine", 0.0f);
-                    break;
-                case "3":
-                    sendCommand("lock", 1.0f);
-                    break;
-                case "4":
-                    sendCommand("lock", 0.0f);
-                    break;
-                case "5":
-                    System.out.print("请输入油量值(0-100): ");
-                    try {
-                        float fuel = Float.parseFloat(scanner.nextLine());
-                        if (fuel >= 0 && fuel <= 100) {
-                            sendCommand("fuel", fuel);
-                        } else {
-                            System.out.println("油量值必须在0-100之间");
-                        }
-                    } catch (NumberFormatException e) {
-                        System.out.println("输入无效，请输入数字");
-                    }
-                    break;
-                case "6":
-                    System.out.print("请输入位置: ");
-                    String location = scanner.nextLine();
-                    sendLocationCommand(location);
-                    break;
-                case "7":
-                    requestCurrentStatus();
+                    handleHomeCommands(scanner);
                     break;
                 case "0":
                     System.out.println("正在退出手机App...");
@@ -103,73 +81,39 @@ public class MobileAppSimulator {
         }
     }
 
-    private void sendCommand(String action, float value) {
-        Command command = new Command();
-        command.deviceId = "vehicle_001";
-        command.deviceType = "vehicle";
-        command.action = action;
-        command.value = value;
-        command.timeStamp = String.valueOf(System.currentTimeMillis() / 1000L);
-        
+    private void handleCarCommands(Scanner scanner) {
+        System.out.println("--- 车辆控制 ---");
+        System.out.println(" a. 启动发动机 (engine_on)");
+        System.out.println(" b. 关闭发动机 (engine_off)");
+        System.out.println(" c. 锁车 (lock)");
+        System.out.println(" d. 解锁 (unlock)");
+        System.out.print("请输入车辆命令> ");
+        String action = scanner.nextLine();
+        sendCommand("car", action);
+    }
+
+    private void handleHomeCommands(Scanner scanner) {
+        System.out.println("--- 家居控制 ---");
+        System.out.println(" a. 开灯 (light_on)");
+        System.out.println(" b. 关灯 (light_off)");
+        System.out.println(" c. 打开空调 (ac_on)");
+        System.out.println(" d. 关闭空调 (ac_off)");
+        System.out.print("请输入家居命令> ");
+        String action = scanner.nextLine();
+        sendCommand("home", action);
+    }
+
+    private void sendCommand(String target, String action) {
         if (commandPublisher != null) {
-            commandPublisher.publishCommand(command);
-            System.out.println("命令已发送: " + action + "=" + value);
+            commandPublisher.publishCommand(target, action);
         } else {
             System.err.println("命令发布器未初始化");
         }
     }
 
-    private void sendLocationCommand(String location) {
-        Command command = new Command();
-        command.deviceId = "vehicle_001";
-        command.deviceType = "vehicle";
-        command.action = "location";
-        command.value = 0.0f;
-        command.timeStamp = String.valueOf(System.currentTimeMillis() / 1000L);
-        
-        // 这里简化处理，将位置信息编码到timeStamp字段
-        command.timeStamp = "LOCATION_" + location;
-        
-        if (commandPublisher != null) {
-            commandPublisher.publishCommand(command);
-            System.out.println("位置命令已发送: " + location);
-        }
-    }
-
-    private void requestCurrentStatus() {
-        Command command = new Command();
-        command.deviceId = "vehicle_001";
-        command.deviceType = "vehicle";
-        command.action = "status_request";
-        command.value = 0.0f;
-        command.timeStamp = String.valueOf(System.currentTimeMillis() / 1000L);
-        
-        if (commandPublisher != null) {
-            commandPublisher.publishCommand(command);
-            System.out.println("状态请求已发送");
-        }
-    }
-
-    public void onVehicleStatusReceived(VehicleStatus status) {
-        System.out.println("\n=== 接收到车辆状态 ===");
-        System.out.println("发动机状态: " + (status.engineOn ? "启动" : "熄火"));
-        System.out.println("车门状态: " + (status.doorsLocked ? "锁定" : "解锁"));
-        System.out.println("油量: " + status.fuelPercent + "%");
-        System.out.println("位置: " + status.location);
-        System.out.println("时间戳: " + status.timeStamp);
-        System.out.println("========================");
-    }
-
     public void shutdown() {
         running.set(false);
-        
-        if (commandPublisher != null) {
-            commandPublisher.close();
-        }
-        if (statusSubscriber != null) {
-            statusSubscriber.close();
-        }
-        
+        DdsParticipant.getInstance().close();
         System.out.println("手机App已关闭");
         System.exit(0);
     }
