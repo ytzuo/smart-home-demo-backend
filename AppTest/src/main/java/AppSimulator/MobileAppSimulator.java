@@ -3,7 +3,10 @@ package AppSimulator;
 import AppSimulator.DDS.CommandPublisher;
 import AppSimulator.DDS.DdsParticipant;
 import AppSimulator.DDS.StatusSubscriber;
-import AppTestIDL.*;
+import AppTestIDL.Command;
+import AppTestIDL.CommandTypeSupport;
+import AppTestIDL.HomeStatusTypeSupport;
+import AppTestIDL.VehicleStatusTypeSupport;
 import com.zrdds.topic.Topic;
 
 import java.util.Scanner;
@@ -15,8 +18,7 @@ public class MobileAppSimulator {
     private CommandPublisher commandPublisher;
     private StatusSubscriber statusSubscriber;
     private AtomicBoolean running;
-    // 添加车辆状态变量
-    private VehicleStatus currentVehicleStatus;  // 新增
+
     public MobileAppSimulator() {
         loadLibrary();
         running = new AtomicBoolean(true);
@@ -38,10 +40,10 @@ public class MobileAppSimulator {
         // 初始化Publisher和Subscriber
         commandPublisher = new CommandPublisher();
         commandPublisher.start(participant.getPublisher(), commandTopic);
-        VehicleStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleStatus");
 
         statusSubscriber = new StatusSubscriber();
         statusSubscriber.start(participant.getSubscriber(), homeStatusTopic, vehicleStatusTopic);
+
         System.out.println("DDS 初始化完成");
     }
 
@@ -87,105 +89,18 @@ public class MobileAppSimulator {
         System.out.println(" d. 解锁 (unlock)");
         System.out.print("请输入车辆命令> ");
         String action = scanner.nextLine();
-        //sendCommand("car", action);
-        switch (action.toLowerCase()) {
-            case "a":
-                sendCommand("car", "engine_on");
-                break;
-            case "b":
-                sendCommand("car", "engine_off");
-                break;
-            case "c":
-                sendCommand("car", "lock");
-                break;
-            case "d":
-                sendCommand("car", "unlock");
-                break;
-            case "e":
-                System.out.println("正在刷新车辆状态...");
-                break;  // 状态会通过DDS自动更新
-            default:
-                System.out.println("无效命令");
-        }
+        sendCommand("car", action);
     }
 
     private void handleHomeCommands(Scanner scanner) {
         System.out.println("--- 家居控制 ---");
         System.out.println(" a. 开灯 (light_on)");
         System.out.println(" b. 关灯 (light_off)");
-        // 新增：空调子菜单选项
-        System.out.println(" c. 空调控制 (进入子菜单)");
+        System.out.println(" c. 打开空调 (ac_on)");
+        System.out.println(" d. 关闭空调 (ac_off)");
         System.out.print("请输入家居命令> ");
-        String input = scanner.nextLine().trim();
-
-        switch (input.toLowerCase()) {
-            case "a":
-                sendCommand("light", "on");  // 灯光命令目标为 "light"
-                break;
-            case "b":
-                sendCommand("light", "off"); // 灯光命令目标为 "light"
-                break;
-            case "c":
-                handleAirConditionerCommands(scanner); // 新增空调子菜单处理
-                break;
-            default:
-                System.out.println("无效命令，请重新输入");
-        }
-    }
-    // 新增：空调子菜单处理方法
-    private void handleAirConditionerCommands(Scanner scanner) {
-        System.out.println("\n--- 空调控制子菜单 ---");
-        System.out.println(" co. 制冷模式 (输入温度 16-30°C，如 26)");
-        System.out.println(" he. 制热模式 (输入温度 16-30°C，如 28)");
-        System.out.println(" fan. 风扇模式");
-        System.out.println(" auto. 自动模式");
-        System.out.println(" e. 关闭空调");
-        System.out.print("请选择空调命令> ");
-        String cmd = scanner.nextLine().trim();
-
-        switch (cmd) {
-            case "co":
-                System.out.print("请输入制冷温度 (16-30)> ");
-                String coolTemp = scanner.nextLine().trim();
-                // 添加温度范围验证
-                try {
-                    double temp = Double.parseDouble(coolTemp);
-                    if (temp < 16 || temp > 30) {
-                        System.out.println("输入失败：温度超出范围（16-30°C）");
-                        break;
-                    }
-                    sendCommand("ac", "cool_" + coolTemp); // 发送格式："cool_26"
-                } catch (NumberFormatException e) {
-                    System.out.println("输入失败：请输入有效的数字");
-                }
-                break;
-            case "he":
-                System.out.print("请输入制热温度 (16-30)> ");
-                String heatTemp = scanner.nextLine().trim();
-                // 添加温度范围验证
-                try {
-                    double temp = Double.parseDouble(heatTemp);
-                    if (temp < 16 || temp > 30) {
-                        System.out.println("输入失败：温度超出范围（16-30°C）");
-                        break;
-                    }
-                    sendCommand("ac", "heat_" + heatTemp); // 发送格式："heat_28"
-                } catch (NumberFormatException e) {
-                    System.out.println("输入失败：请输入有效的数字");
-                }
-                break;
-            case "fan":
-                sendCommand("ac", "fan"); // 风扇模式
-                break;
-            case "auto":
-                sendCommand("ac", "auto"); // 自动模式
-                break;
-            case "e":
-                sendCommand("ac", "off"); // 关闭空调
-                break;
-            default:
-                System.out.println("无效空调命令");
-        }
+        String action = scanner.nextLine();
+        sendCommand("home", action);
     }
 
     private void sendCommand(String target, String action) {
