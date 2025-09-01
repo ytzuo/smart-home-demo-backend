@@ -1,113 +1,102 @@
 package HomeSimulator.DDS;
 
-import AppTestIDL.HomeStatus;
-import AppTestIDL.HomeStatusDataWriter;
-import com.zrdds.infrastructure.*;
-import com.zrdds.publication.DataWriterQos;
+import com.zrdds.domain.DomainParticipant;
+import com.zrdds.domain.DomainParticipantFactory;
+import com.zrdds.infrastructure.StatusKind;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
+import IDL.HomeStatusTypeSupport;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * 重构为DDS资源提供者（提供Publisher和Topic给FurnitureManager）
+ */
 public class HomeStatusPublisher {
-    private HomeStatusDataWriter writer;
-    private AtomicBoolean started = new AtomicBoolean(false);
-    private volatile boolean running = false;
+    private DomainParticipant participant;
+    private Publisher publisher;
+    private Topic homeStatusTopic;
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
 
-    public boolean start(Publisher pub, Topic homeStatusTopic) {
-        if (started.get()) {
-            System.out.println("[HomeSimulator] HomeStatusPublisher 已经启动");
+    /**
+     * 初始化DDS核心资源（DomainParticipant/Publisher/Topic）
+     */
+    public boolean initialize() {
+        if (initialized.get()) {
+            System.out.println("[HomeStatusPublisher] DDS资源已初始化");
             return true;
         }
 
-        // 配置QoS
-        DataWriterQos dwQos = new DataWriterQos();
-        pub.get_default_datawriter_qos(dwQos);
-        dwQos.durability.kind = DurabilityQosPolicyKind.TRANSIENT_LOCAL_DURABILITY_QOS;
-        dwQos.reliability.kind = ReliabilityQosPolicyKind.RELIABLE_RELIABILITY_QOS;
-        dwQos.history.kind = HistoryQosPolicyKind.KEEP_LAST_HISTORY_QOS;
-        dwQos.history.depth = 10;
+        try {
+            // 1. 创建DomainParticipant（DDS域参与者）
+            participant = DomainParticipantFactory.get_instance().create_participant(
+                    0, // 默认域ID
+                    DomainParticipantFactory.PARTICIPANT_QOS_DEFAULT,
+                    null,
+                    StatusKind.STATUS_MASK_NONE);
+            if (participant == null) {
+                throw new RuntimeException("创建DomainParticipant失败");
+            }
 
-        // 创建DataWriter
-        writer = (HomeStatusDataWriter) pub.create_datawriter(
-                homeStatusTopic,
-                dwQos,
-                null,
-                StatusKind.STATUS_MASK_NONE);
+            // 2. 注册HomeStatus类型（IDL生成的类型支持类）
+            HomeStatusTypeSupport.get_instance().register_type(participant, HomeStatusTypeSupport.get_instance().get_type_name());
 
-        if (writer == null) {
-            System.err.println("[HomeSimulator] 创建 HomeStatusDataWriter 失败");
+            // 3. 创建Topic（主题名称需与订阅端一致）
+            homeStatusTopic = participant.create_topic(
+                    "HomeStatusTopic", // 主题名称
+                    HomeStatusTypeSupport.get_instance().get_type_name(),
+                    DomainParticipant.TOPIC_QOS_DEFAULT,
+                    null,
+                    StatusKind.STATUS_MASK_NONE);
+            if (homeStatusTopic == null) {
+                throw new RuntimeException("创建HomeStatusTopic失败");
+            }
+
+            // 4. 创建Publisher（发布器）
+            publisher = participant.create_publisher(
+                    DomainParticipant.PUBLISHER_QOS_DEFAULT,
+                    null,
+                    StatusKind.STATUS_MASK_NONE);
+            if (publisher == null) {
+                throw new RuntimeException("创建Publisher失败");
+            }
+
+            initialized.set(true);
+            System.out.println("[HomeStatusPublisher] DDS资源初始化成功");
+            return true;
+        } catch (Exception e) {
+            System.err.println("[HomeStatusPublisher] DDS初始化失败: " + e.getMessage());
+            cleanup(); // 失败时清理资源
             return false;
         }
-
-        started.set(true);
-        running = true;
-        System.out.println("[HomeSimulator] HomeStatusPublisher 已启动");
-        return true;
     }
 
-    public void stop() {
-        running = false;
-        started.set(false);
-    }
-
-    public void publishHomeStatus(HomeStatus homeStatus) {
-        if (!started.get() || writer == null) {
-            System.err.println("[HomeSimulator] HomeStatusPublisher 未启动或DataWriter为空");
-            return;
-        }
-
-        if (!running) {
-            System.err.println("[HomeSimulator] HomeStatusPublisher 已停止运行");
-            return;
-        }
-
-        try {
-            ReturnCode_t rtn = writer.write(homeStatus, InstanceHandle_t.HANDLE_NIL_NATIVE);
-            if (rtn == ReturnCode_t.RETCODE_OK) {
-                System.out.printf("[HomeSimulator] 已上报Home状态: AC=%s, Light=%s, Temp=%.1f%n", 
-                        homeStatus.acStatus.get_at(0), homeStatus.lightOn.get_at(0), 
-                        homeStatus.acTemp.length() > 0 ? homeStatus.acTemp.get_at(0) : 0.0f);
-            } else {
-                System.err.println("[HomeSimulator] 写入HomeStatus数据失败，返回码: " + rtn);
+    /**
+     * 释放DDS资源
+     */
+    public void cleanup() {
+        if (participant != null) {
+            if (publisher != null) {
+                participant.delete_publisher(publisher);
             }
-        } catch (Exception e) {
-            System.err.println("[HomeSimulator] 发布HomeStatus时发生异常: " + e.getMessage());
-            e.printStackTrace();
+            if (homeStatusTopic != null) {
+                participant.delete_topic(homeStatusTopic);
+            }
+            DomainParticipantFactory.get_instance().delete_participant(participant);
         }
+        initialized.set(false);
+        System.out.println("[HomeStatusPublisher] DDS资源已释放");
     }
 
-    public void publishHomeStatus(String acStatus, boolean lightOn) {
-        HomeStatus homeStatus = new HomeStatus();
-        
-        // 设置AC状态
-        homeStatus.acStatus.append(acStatus);
-        
-        // 设置灯光状态
-        homeStatus.lightOn.append(lightOn);
-        
-        publishHomeStatus(homeStatus);
+    // ======== 提供DDS资源访问接口（供FurnitureManager获取） ========
+    public Publisher getPublisher() {
+        return initialized.get() ? publisher : null;
     }
 
-    public void publishHomeStatus(String acStatus, boolean lightOn, double temperature) {
-        HomeStatus homeStatus = new HomeStatus();
-        
-        // 设置AC状态
-        homeStatus.acStatus.append(acStatus);
-        
-        // 设置灯光状态
-        homeStatus.lightOn.append(lightOn);
-        
-        // 设置温度
-        homeStatus.acTemp.append((float)temperature);
-        
-        publishHomeStatus(homeStatus);
+    public Topic getHomeStatusTopic() {
+        return initialized.get() ? homeStatusTopic : null;
     }
 
-    public boolean isStarted() {
-        return started.get();
-    }
-
-    public boolean isRunning() {
-        return running;
+    public boolean isInitialized() {
+        return initialized.get();
     }
 }
