@@ -1,16 +1,14 @@
 package AppSimulator.DDS;
 
-import IDL.HomeStatus;
-import IDL.HomeStatusDataReader;
-import IDL.HomeStatusSeq;
-import IDL.VehicleStatus;
-import IDL.VehicleStatusDataReader;
-import IDL.VehicleStatusSeq;
+import AppTestIDL.HomeStatus;
+import AppTestIDL.HomeStatusDataReader;
+import AppTestIDL.HomeStatusSeq;
+import AppTestIDL.VehicleStatus;
+import AppTestIDL.VehicleStatusDataReader;
+import AppTestIDL.VehicleStatusSeq;
 import com.zrdds.infrastructure.*;
 import com.zrdds.subscription.*;
 import com.zrdds.topic.Topic;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 public class StatusSubscriber {
 
@@ -51,7 +49,7 @@ public class StatusSubscriber {
         return true;
     }
 
-    // HomeStatus监听器（核心修改：适配deviceIds/deviceTypes/deviceStatus字段）
+    // HomeStatus监听器
     static class HomeStatusListener implements DataReaderListener {
         @Override
         public void on_data_available(DataReader reader) {
@@ -59,59 +57,27 @@ public class StatusSubscriber {
             HomeStatusSeq dataSeq = new HomeStatusSeq();
             SampleInfoSeq infoSeq = new SampleInfoSeq();
 
-            try {
-                ReturnCode_t rtn = dr.take(dataSeq, infoSeq, -1,
-                        SampleStateKind.ANY_SAMPLE_STATE,
-                        ViewStateKind.ANY_VIEW_STATE,
-                        InstanceStateKind.ANY_INSTANCE_STATE);
+            ReturnCode_t rtn = dr.take(dataSeq, infoSeq, -1, SampleStateKind.ANY_SAMPLE_STATE, ViewStateKind.ANY_VIEW_STATE, InstanceStateKind.ANY_INSTANCE_STATE);
 
-                if (rtn != ReturnCode_t.RETCODE_OK) {
-                    System.out.println("读取 HomeStatus 数据失败，返回码: " + rtn);
-                    return;
-                }
+            if (rtn != ReturnCode_t.RETCODE_OK) {
+                System.out.println("take HomeStatus 数据失败");
+                return;
+            }
 
-                for (int i = 0; i < dataSeq.length(); i++) {
-                    if (infoSeq.get_at(i).valid_data) {
-                        HomeStatus data = dataSeq.get_at(i);
-                        int deviceCount = data.deviceIds.length();
-                        for (int idx = 0; idx < deviceCount; idx++) {
-                            String deviceId = data.deviceIds.get_at(idx);
-                            String deviceType = data.deviceTypes.get_at(idx);
-                            String statusJson = data.deviceStatus.get_at(idx);
-
-                            // ======== 新增：JSON格式验证 ========
-                            // 1. 非空检查
-                            if (statusJson == null || statusJson.trim().isEmpty()) {
-                                System.err.printf("设备 %s (类型: %s) 状态为空，跳过解析%n", deviceId, deviceType);
-                                continue;
-                            }
-                            // 2. JSON格式预验证（必须以 '{' 开头）
-                            if (!statusJson.trim().startsWith("{")) {
-                                System.err.printf("设备 %s (类型: %s) 状态格式错误，非JSON对象: %s%n",
-                                        deviceId, deviceType, statusJson);
-                                continue;
-                            }
-
-                            // 解析JSON（仅处理格式正确的数据）
-                            try {
-                                JSONObject statusObj = new JSONObject(statusJson);
-                                System.out.println("\n===== 接收到家居状态数据 =====");
-                                System.out.printf("设备 %d: ID=%s, 类型=%s%n", idx+1, deviceId, deviceType);
-                                System.out.println("原始状态JSON: " + statusJson);
-                                System.out.println("解析后状态: " + statusObj.toString(4));
-                            } catch (JSONException e) {
-                                System.err.printf("设备 %s (类型: %s) JSON解析失败: %s%n",
-                                        deviceId, deviceType, e.getMessage());
-                            }
-                        }
+            for (int i = 0; i < dataSeq.length(); i++) {
+                if (infoSeq.get_at(i).valid_data) {
+                    HomeStatus data = dataSeq.get_at(i);
+                    // 打印接收到的Home状态，使用IDL中定义的字段
+                    if (data.acStatus.length() > 0 && data.lightOn.length() > 0) {
+                        System.out.printf("接收到Home状态: AC Status=%s, Light On=%b%n", 
+                                          data.acStatus.get_at(0), data.lightOn.get_at(0));
+                    } else {
+                        System.out.println("接收到Home状态 (数据不完整)");
                     }
                 }
-            } catch (Exception e) {
-                System.err.println("处理HomeStatus数据异常: " + e.getMessage());
-                e.printStackTrace();
-            } finally {
-                dr.return_loan(dataSeq, infoSeq);
             }
+
+            dr.return_loan(dataSeq, infoSeq);
         }
 
         @Override public void on_liveliness_changed(DataReader dr, LivelinessChangedStatus s) {}

@@ -1,37 +1,53 @@
 package HomeSimulator.furniture;
 
 /**
- * 家具接口 - 所有家具类型需实现此接口
+ * 家具基础接口，为后续IDL扩展预留接口
+ * 定义所有家具的通用行为
  */
 public interface Furniture {
-    // 获取家具唯一ID（非null）
+    /**
+     * 获取家具ID
+     */
     String getId();
-
-    // 获取家具名称（非null）
+    
+    /**
+     * 获取家具名称
+     */
     String getName();
-
-    // 获取家具类型（如"light"/"ac"，非null）
+    
+    /**
+     * 获取家具类型
+     */
     String getType();
-
-    // 获取当前状态（如"on"/"off"/"cool"，非null）
+    
+    /**
+     * 获取当前状态
+     */
     String getStatus();
-
-    // 设置状态（返回是否设置成功）
-    boolean setStatus(String newStatus);
-
-    // 获取状态描述（如"客厅灯: 开启"，非null）
+    
+    /**
+     * 设置新状态
+     */
+    boolean setStatus(String status);
+    
+    /**
+     * 获取状态描述
+     */
     String getStatusDescription();
-
-    // 添加状态变更监听器
+    
+    /**
+     * 添加状态变更监听器
+     */
     void addStatusChangeListener(StatusChangeListener listener);
-
-    // 移除状态变更监听器
+    
+    /**
+     * 移除状态变更监听器
+     */
     void removeStatusChangeListener(StatusChangeListener listener);
-
+    
     /**
      * 状态变更监听器接口
      */
-    @FunctionalInterface
     interface StatusChangeListener {
         void onStatusChanged(String furnitureId, String oldStatus, String newStatus);
     }

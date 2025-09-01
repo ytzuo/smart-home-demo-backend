@@ -1,8 +1,8 @@
 package HomeSimulator.DDS;
 
-import IDL.Command;
-import IDL.CommandDataReader;
-import IDL.CommandSeq;
+import AppTestIDL.Command;
+import AppTestIDL.CommandDataReader;
+import AppTestIDL.CommandSeq;
 import com.zrdds.infrastructure.*;
 import com.zrdds.subscription.*;
 import com.zrdds.topic.Topic;
