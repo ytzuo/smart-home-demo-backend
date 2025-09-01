@@ -1,7 +1,7 @@
 package AppSimulator.DDS;
 
-import AppTestIDL.Command;
-import AppTestIDL.CommandDataWriter;
+import IDL.Command;
+import IDL.CommandDataWriter;
 import com.zrdds.infrastructure.*;
 import com.zrdds.publication.DataWriterQos;
 import com.zrdds.publication.Publisher;

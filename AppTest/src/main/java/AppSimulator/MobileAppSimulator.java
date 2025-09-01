@@ -3,10 +3,10 @@ package AppSimulator;
 import AppSimulator.DDS.CommandPublisher;
 import AppSimulator.DDS.DdsParticipant;
 import AppSimulator.DDS.StatusSubscriber;
-import AppTestIDL.Command;
-import AppTestIDL.CommandTypeSupport;
-import AppTestIDL.HomeStatusTypeSupport;
-import AppTestIDL.VehicleStatusTypeSupport;
+import IDL.Command;
+import IDL.CommandTypeSupport;
+import IDL.HomeStatusTypeSupport;
+import IDL.VehicleStatusTypeSupport;
 import com.zrdds.topic.Topic;
 
 import java.util.Scanner;
@@ -105,6 +105,10 @@ public class MobileAppSimulator {
 
     private void sendCommand(String target, String action) {
         if (commandPublisher != null) {
+            if (target == null || target.isEmpty() || action == null || action.isEmpty()) {
+                System.err.println("命令参数无效：target=" + target + ", action=" + action);
+                return;
+            }
             commandPublisher.publishCommand(target, action);
         } else {
             System.err.println("命令发布器未初始化");

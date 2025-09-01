@@ -1,61 +1,53 @@
 module SmartDemo03 {
     typedef sequence<octet> Blob;
-
     struct Presence {
-        boolean  inRange;
-        string   deviceId;
-        string   deviceType;
-        string   timeStamp;
-    };
-
-
-    struct VehicleStatus {
-        boolean  engineOn;
-        boolean  doorsLocked;
-        float    fuelPercent;
-        string   location;
-        string   timeStamp;
-    };
-
-
-    struct HomeStatus {
-        sequence<string>   deviceIds;
-        sequence<string>   deviceTypes;
-        sequence<float>    acTemp;
-        sequence<string>  acStatus;  
-        sequence<boolean>  lightOn;
-        sequence<float>    lightPercent; 
-        sequence<boolean>  cameraOn;
-        string                 timeStamp;
-    };
-
-
-    struct Alert {
-        string  deviceId;
-        string  deviceType;
-        long    alert_id;
-        string  level;    
-        string  description;
-        string  timeStamp;
-    };
-
-    struct AlertMedia { 
+        boolean inRange;
         string deviceId;
         string deviceType;
-        long   alert_id;
-        long   media_type;
-        long   total_size;
-        long   chunk_seq;
-        long   chunk_size;
-        Blob   chunk;
+        string timeStamp;
     };
 
+    struct VehicleStatus {
+        boolean engineOn;
+        boolean doorsLocked;
+        boolean acOn;
+        float fuelPercent;
+        string location;
+        string timeStamp;
+    };
+
+    struct HomeStatus {
+        sequence<string> deviceIds;
+        sequence<string> deviceTypes;
+        sequence<string> deviceStatus; //采用JSON格式, 后端将每个家具的状态分别组成JSON格式, 前端按JSON格式进行解析, 保证可扩展性
+        string timeStamp;
+    };
+
+    struct Alert {
+        string deviceId;
+        string deviceType;
+        long alert_id;
+        string level; //INFO, WARN, ALERT
+        string description;
+        string timeStamp;
+    };
+
+    struct AlertMedia { //报警时传输图像, 暂未启用
+        string deviceId;
+        string deviceType;
+        long alert_id;
+        long media_type;
+        long total_size;
+        long chunk_seq;
+        long chunk_size;
+        Blob chunk;
+    };
 
     struct Command {
-        string  deviceId;
-        string  deviceType;
-        string  action;    
-        float   value;           
-        string  timeStamp;
+        string deviceId;
+        string deviceType;
+        string action; //控制命令类型
+        float value; //控制命令值
+        string timeStamp;
     };
 };
