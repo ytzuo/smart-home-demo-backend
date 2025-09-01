@@ -1,8 +1,8 @@
 package CarSimulator.DDS;
 
-import AppTestIDL.Command;
-import AppTestIDL.CommandDataReader;
-import AppTestIDL.CommandSeq;
+import IDL.Command;
+import IDL.CommandDataReader;
+import IDL.CommandSeq;
 import com.zrdds.infrastructure.*;
 import com.zrdds.subscription.*;
 import com.zrdds.topic.Topic;
