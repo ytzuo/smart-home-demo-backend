@@ -1,35 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.example</groupId>
   <artifactId>SmartHomeDemoBackend</artifactId>
   <version>1.0-SNAPSHOT</version>
   <name>Archetype - SmartHomeDemoBackend</name>
   <url>http://maven.apache.org</url>
-  <!-- 新增：添加项目依赖 -->
-  <dependencies>
-    <!-- JSON解析库 -->
-    <dependency>
-      <groupId>org.json</groupId>
-      <artifactId>json</artifactId>
-      <version>20231013</version> <!-- 稳定版本 -->
-    </dependency>
-  </dependencies>
-
-  <!-- 新增：指定Java编译版本（解决发行版本5问题） -->
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.1</version> <!-- 插件版本 -->
-        <configuration>
-          <!-- 根据你的JDK版本修改（如1.8=Java 8，11=Java 11，17=Java 17） -->
-          <source>17</source> <!-- 源代码兼容版本 -->
-          <target>17</target> <!-- 目标字节码版本 -->
-          <encoding>UTF-8</encoding> <!-- 编码格式 -->
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>
