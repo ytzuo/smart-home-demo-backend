@@ -130,16 +130,20 @@ public class Light implements Furniture {
             HomeStatus status = new HomeStatus();
             int lightIndex = getLightIndex();
 
+            // ======== 为HomeStatus添加时间戳 ========
+            DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            status.timeStamp = LocalDateTime.now().format(timestampFormatter);
+
             // 构建标准化JSON模板（含设备基础信息+状态参数）
             JSONObject statusJson = new JSONObject();
 
             // 1. 基础信息（设备标识与元数据）
-            statusJson.put("deviceId", this.id);          // 设备唯一ID（如"light1"）
-            statusJson.put("deviceName", this.name);      // 设备名称（如"客厅灯"）
-            statusJson.put("type", this.type);            // 设备类型（固定"light"）
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            String formattedTime = LocalDateTime.now().format(formatter);
-            statusJson.put("timestamp", formattedTime);
+//            statusJson.put("deviceId", this.id);          // 设备唯一ID（如"light1"）
+//            statusJson.put("deviceName", this.name);      // 设备名称（如"客厅灯"）
+//            statusJson.put("type", this.type);            // 设备类型（固定"light"）
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+//            String formattedTime = LocalDateTime.now().format(formatter);
+//            statusJson.put("timestamp", formattedTime);
 
             // 2. 核心状态（布尔/枚举型状态序列）
             JSONArray statusArray = new JSONArray();
