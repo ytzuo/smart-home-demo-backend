@@ -221,43 +221,46 @@ public class AirConditioner implements Furniture, AlertableDevice {
     @Override
     public boolean checkAbnormal() {
         updateCurrentTemperature();
-        boolean tempAbnormal = false;
-        if (currentMode != Mode.OFF) {
-            double diff = Math.abs(currentTemperature - targetTemperature);
-            tempAbnormal = diff > 5.0 && random.nextDouble() < 0.1;
-        }
-        boolean performanceAbnormal = false;
-        if (currentMode == Mode.COOL && currentTemperature > targetTemperature + 3) {
-            performanceAbnormal = random.nextDouble() < 0.15;
-        } else if (currentMode == Mode.HEAT && currentTemperature < targetTemperature - 3) {
-            performanceAbnormal = random.nextDouble() < 0.15;
-        }
-        if (tempAbnormal || performanceAbnormal) {
-            abnormalCounter++;
-            if (abnormalCounter >= ABNORMAL_THRESHOLD && !isAbnormal) {
-                isAbnormal = true;
-                if (tempAbnormal) {
-                    alertType = "ac_temperature_abnormal";
-                    alertMessage = String.format("空调 %s 温度异常: 当前%.1f℃, 目标%.1f℃",
-                            name, currentTemperature, targetTemperature);
-                } else {
-                    alertType = "ac_performance_abnormal";
-                    alertMessage = String.format("空调 %s %s效果异常，可能需要维修",
-                            name, currentMode == Mode.COOL ? "制冷" : "制热");
-                }
-                
-                // 直接调用报警系统
-                if (alertSystem != null) {
-                    alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
-                }
-                
-                return true;
-            }
-        } else {
-            if (abnormalCounter > 0) abnormalCounter = 0;
-            if (isAbnormal) resetAlert();
-        }
+        // 原有的概率检测逻辑已移除，改为手动触发
         return isAbnormal;
+    }
+    
+    /**
+     * 手动触发空调温度异常报警
+     */
+    public void triggerTemperatureAbnormalAlert() {
+        if (!isAbnormal) {
+            isAbnormal = true;
+            alertType = "ac_temperature_abnormal";
+            alertMessage = String.format("空调 %s 温度异常: 当前%.1f℃, 目标%.1f℃",
+                    name, currentTemperature, targetTemperature);
+            
+            System.out.printf("[AirConditioner] 手动触发异常: ID=%s, 类型=%s, 消息=%s%n", 
+                    id, alertType, alertMessage);
+            
+            if (alertSystem != null) {
+                alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
+            }
+        }
+    }
+    
+    /**
+     * 手动触发空调性能异常报警
+     */
+    public void triggerPerformanceAbnormalAlert() {
+        if (!isAbnormal) {
+            isAbnormal = true;
+            alertType = "ac_performance_abnormal";
+            alertMessage = String.format("空调 %s %s效果异常，可能需要维修",
+                    name, currentMode == Mode.COOL ? "制冷" : "制热");
+            
+            System.out.printf("[AirConditioner] 手动触发异常: ID=%s, 类型=%s, 消息=%s%n", 
+                    id, alertType, alertMessage);
+            
+            if (alertSystem != null) {
+                alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
+            }
+        }
     }
 
     @Override public String getAlertMessage() { return alertMessage; }

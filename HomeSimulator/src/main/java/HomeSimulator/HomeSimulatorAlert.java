@@ -3,10 +3,17 @@ package HomeSimulator;
 import HomeSimulator.DDS.DdsParticipant;
 import HomeSimulator.furniture.*;
 import com.zrdds.infrastructure.InstanceHandle_t;
+import com.zrdds.infrastructure.ReturnCode_t;
 import com.zrdds.publication.Publisher;
+import com.zrdds.publication.DataWriterQos;
+import com.zrdds.infrastructure.DurabilityQosPolicyKind;
+import com.zrdds.infrastructure.ReliabilityQosPolicyKind;
+import com.zrdds.infrastructure.HistoryQosPolicyKind;
 import com.zrdds.topic.Topic;
 import IDL.HomeStatus;
 import IDL.HomeStatusDataWriter;
+import IDL.Alert;
+import IDL.AlertDataWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,6 +67,8 @@ public class HomeSimulatorAlert {
     private Publisher publisher;
     private Topic homeStatusTopic;
     private HomeStatusDataWriter homeStatusWriter;
+    private Topic alertTopic;
+    private AlertDataWriter alertWriter;
     private AtomicBoolean alertActive;
     private AlertType currentAlertType;
     private String alertMessage;
@@ -101,10 +110,12 @@ public class HomeSimulatorAlert {
      * 构造函数
      * @param publisher DDS发布器
      * @param homeStatusTopic 家庭状态主题
+     * @param alertTopic 报警主题
      */
-    public HomeSimulatorAlert(Publisher publisher, Topic homeStatusTopic) {
+    public HomeSimulatorAlert(Publisher publisher, Topic homeStatusTopic, Topic alertTopic) {
         this.publisher = publisher;
         this.homeStatusTopic = homeStatusTopic;
+        this.alertTopic = alertTopic;
         this.alertActive = new AtomicBoolean(false);
         this.currentAlertType = AlertType.NONE;
         this.alertMessage = "";
@@ -135,6 +146,25 @@ public class HomeSimulatorAlert {
         
         if (homeStatusWriter == null) {
             System.err.println("[HomeSimulatorAlert] 创建HomeStatus数据写入器失败");
+            return;
+        }
+
+        // 创建Alert数据写入器，配置与手机端匹配的QoS
+        DataWriterQos dwQos = new DataWriterQos();
+        publisher.get_default_datawriter_qos(dwQos);
+        dwQos.durability.kind = DurabilityQosPolicyKind.TRANSIENT_LOCAL_DURABILITY_QOS;
+        dwQos.reliability.kind = ReliabilityQosPolicyKind.RELIABLE_RELIABILITY_QOS;
+        dwQos.history.kind = HistoryQosPolicyKind.KEEP_LAST_HISTORY_QOS;
+        dwQos.history.depth = 10;
+        
+        alertWriter = (AlertDataWriter) publisher.create_datawriter(
+                alertTopic, 
+                dwQos, 
+                null, 
+                0);
+        
+        if (alertWriter == null) {
+            System.err.println("[HomeSimulatorAlert] 创建Alert数据写入器失败");
             return;
         }
 
@@ -471,18 +501,22 @@ public class HomeSimulatorAlert {
         
         // 触发系统报警
         triggerAlert(systemAlertType, fullMessage);
+        
+        // 直接发布Alert消息到手机端，使用正确的设备ID和类型
+        publishDeviceAlertMessage(deviceId, deviceType, systemAlertType, fullMessage, true);
     }
     
     /**
      * 清除特定设备的报警
-     * @param deviceId 设备ID
+     * @param deviceID 设备ID
      */
-    public void clearDeviceAlert(String deviceId) {
-        System.out.printf("[HomeSimulatorAlert] 清除设备报警: ID=%s%n", deviceId);
+    public void clearDeviceAlert(String deviceID) {
+        System.out.printf("[HomeSimulatorAlert] 清除设备报警: ID=%s%n", deviceID);
         
-        // 如果当前报警是由该设备触发的，则清除
-        if (alertActive.get() && alertMessage.contains(deviceId)) {
+        // 检查当前是否有设备相关的报警，并清除
+        if (alertActive.get() && isDeviceAlertType(currentAlertType)) {
             clearAlert();
+            System.out.printf("[HomeSimulatorAlert] 已清除设备相关报警: ID=%s%n", deviceID);
         }
     }
     
@@ -513,6 +547,120 @@ public class HomeSimulatorAlert {
     }
     
     /**
+     * 发布Alert消息到手机端
+     * @param type 报警类型
+     * @param message 报警消息
+     * @param isActive 是否激活报警
+     */
+    private void publishAlertMessage(AlertType type, String message, boolean isActive) {
+        if (alertWriter != null) {
+            try {
+                Alert alert = new Alert();
+                
+                // 从消息中提取设备ID和类型
+                String deviceId = "system";
+                String deviceType = "system";
+                
+                if (message.contains("light1") || message.contains("灯具 light1")) {
+                    deviceId = "light1";
+                    deviceType = "light";
+                } else if (message.contains("light2") || message.contains("灯具 light2")) {
+                    deviceId = "light2";
+                    deviceType = "light";
+                } else if (message.contains("ac1") || message.contains("空调 ac1")) {
+                    deviceId = "ac1";
+                    deviceType = "ac";
+                } else if (message.contains("ac2") || message.contains("空调 ac2")) {
+                    deviceId = "ac2";
+                    deviceType = "ac";
+                } else if (message.contains("灯具")) {
+                    deviceId = "light1";
+                    deviceType = "light";
+                } else if (message.contains("空调")) {
+                    deviceId = "ac1";
+                    deviceType = "ac";
+                } else {
+                    deviceId = "system";
+                    deviceType = "system";
+                }
+                
+                publishDeviceAlertMessage(deviceId, deviceType, type, message, isActive);
+            } catch (Exception e) {
+                System.err.println("[HomeSimulatorAlert] 发布Alert消息失败: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * 直接发布设备Alert消息到手机端
+     * @param deviceId 设备ID
+     * @param deviceType 设备类型
+     * @param type 报警类型
+     * @param message 报警消息
+     * @param isActive 是否激活报警
+     */
+    private void publishDeviceAlertMessage(String deviceId, String deviceType, AlertType type, String message, boolean isActive) {
+        if (alertWriter != null) {
+            try {
+                Alert alert = new Alert();
+                
+                alert.deviceId = deviceId;
+                alert.deviceType = deviceType;
+                
+                // 根据报警类型设置对应的alert_id，与手机端匹配
+                int alertId = 4; // 默认设备故障
+                switch (type) {
+                    case FIRE:
+                        alertId = 1;
+                        break;
+                    case INTRUSION:
+                        alertId = 2;
+                        break;
+                    case DEVICE_OFFLINE:
+                        alertId = 3;
+                        break;
+                    case DEVICE_MALFUNCTION:
+                        alertId = 4;
+                        break;
+                    case DEVICE_OVERHEAT:
+                        alertId = 5;
+                        break;
+                    case LIGHT_ABNORMAL:
+                        alertId = 4; // 映射为设备故障
+                        break;
+                    case AC_ABNORMAL:
+                        alertId = 4; // 映射为设备故障
+                        break;
+                }
+                alert.alert_id = alertId;
+                
+                alert.level = isActive ? "ALERT" : "INFO";
+                alert.description = message;
+                alert.timeStamp = getCurrentTimeStamp();
+                
+                // 调试信息：打印即将发送的Alert对象详情
+                System.out.printf("[HomeSimulatorAlert] 📤 准备发送Alert消息 - Topic: Alert, deviceId: %s, deviceType: %s, alert_id: %d, level: %s, description: %s%n",
+                        alert.deviceId, alert.deviceType, alert.alert_id, alert.level, alert.description);
+                
+                InstanceHandle_t handle = alertWriter.register_instance(alert);
+                ReturnCode_t result = alertWriter.write(alert, handle);
+                
+                if (result == ReturnCode_t.RETCODE_OK) {
+                    System.out.printf("[HomeSimulatorAlert] ✅ 成功发布Alert消息到手机端 - 设备: %s, 类型: %s, 消息: %s, 状态: %s, alert_id: %d, DDS返回码: %s%n", 
+                            deviceId, deviceType, message, isActive ? "激活" : "解除", alertId, result.toString());
+                } else {
+                    System.err.printf("[HomeSimulatorAlert] ❌ 发布Alert消息失败 - DDS返回码: %s%n", result.toString());
+                }
+            } catch (Exception e) {
+                System.err.println("[HomeSimulatorAlert] 发布Alert消息异常: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.err.println("[HomeSimulatorAlert] 警告: alertWriter为null，无法发布Alert消息");
+        }
+    }
+
+    /**
      * 触发设备报警
      * @param device 设备
      * @param statusRecord 状态记录
@@ -537,6 +685,9 @@ public class HomeSimulatorAlert {
         // 触发报警
         triggerAlert(alertType, message);
         
+        // 发布Alert消息到手机端
+        publishAlertMessage(alertType, message, true);
+        
         System.out.printf("[HomeSimulatorAlert] 设备报警: ID=%s, 类型=%s, 消息=%s%n", 
                 device.getId(), statusRecord.type, message);
     }
@@ -549,6 +700,11 @@ public class HomeSimulatorAlert {
     private void clearDeviceAlert(Furniture device, DeviceStatus statusRecord) {
         // 只有当当前报警类型是设备相关的报警时才清除
         if (isDeviceAlertType(currentAlertType)) {
+            String message = String.format("设备 %s 已恢复正常", device.getName());
+            
+            // 发布Alert消息到手机端
+            publishAlertMessage(currentAlertType, message, false);
+            
             clearAlert();
             
             System.out.printf("[HomeSimulatorAlert] 设备恢复正常: ID=%s, 类型=%s%n", 
