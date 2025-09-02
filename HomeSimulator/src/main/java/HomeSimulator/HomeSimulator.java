@@ -2,6 +2,7 @@ package HomeSimulator;
 
 import HomeSimulator.DDS.DdsParticipant;
 import HomeSimulator.DDS.CommandSubscriber;
+import HomeSimulator.furniture.AirConditioner;
 import HomeSimulator.furniture.FurnitureManager;
 import IDL.Command;
 import IDL.CommandTypeSupport;
@@ -215,23 +216,63 @@ public class HomeSimulator {
     }
 
     private void handleAirConditionerCommand(String action) {
-        switch (action.toLowerCase()) {
-            case "ac_on":
-            case "on":
-                turnOnAllAirConditioners();
-                break;
-            case "ac_off":
-            case "off":
-                turnOffAllAirConditioners();
+        String[] parts = action.split("_");
+        if (parts.length < 2) {
+            System.err.println("[HomeSimulator] 空调命令格式错误: " + action);
+            return;
+        }
+
+        String operation = parts[0];
+        String acId = parts[1];
+        AirConditioner targetAc = (AirConditioner) furnitureManager
+                .getFurnitureByType("ac")
+                .stream()
+                .filter(ac -> acId.equals(ac.getId()))
+                .findFirst()
+                .orElse(null);
+
+        if (targetAc == null) {
+            System.err.println("[HomeSimulator] 未找到空调: " + acId);
+            return;
+        }
+
+        switch (operation.toLowerCase()) {
+            case "switch":
+                if (parts.length >= 3) {
+                    String state = parts[2];
+                    if ("on".equals(state)) {
+                        targetAc.setOn(true);
+                    } else if ("off".equals(state)) {
+                        targetAc.setOn(false);
+                    }
+                    targetAc.publishStatus();
+                }
                 break;
             case "cool":
-                setAllAirConditionersMode("cool");
+                targetAc.setCoolingMode(true);
+                targetAc.publishStatus();
                 break;
-            case "heat":
-                setAllAirConditionersMode("heat");
+            case "swing":
+                targetAc.setSwingMode(!targetAc.isSwingMode());
+                targetAc.publishStatus();
+                break;
+            case "dehumidify":
+                targetAc.setDehumidificationMode(!targetAc.isDehumidificationMode());
+                targetAc.publishStatus();
+                break;
+            case "temp":
+                if (parts.length >= 3) {
+                    try {
+                        int temp = Integer.parseInt(parts[2]);
+                        targetAc.setTemperature(temp);
+                        targetAc.publishStatus();
+                    } catch (NumberFormatException e) {
+                        System.err.println("[HomeSimulator] 温度值格式错误: " + parts[2]);
+                    }
+                }
                 break;
             default:
-                System.err.println("[HomeSimulator] 未知的空调命令: " + action);
+                System.err.println("[HomeSimulator] 未知的空调操作: " + operation);
         }
     }
 

@@ -149,56 +149,39 @@ public class MobileAppSimulator {
     // 新增：空调子菜单处理方法
     private void handleAirConditionerCommands(Scanner scanner) {
         System.out.println("\n--- 空调控制子菜单 ---");
-        System.out.println(" co. 制冷模式 (输入温度 16-30°C，如 26)");
-        System.out.println(" he. 制热模式 (输入温度 16-30°C，如 28)");
-        System.out.println(" fan. 风扇模式");
-        System.out.println(" auto. 自动模式");
-        System.out.println(" e. 关闭空调");
-        System.out.print("请选择空调命令> ");
-        String cmd = scanner.nextLine().trim();
+        System.out.println(" 1. 开关控制");
+        System.out.println(" 2. 制冷模式 (设置温度)");
+        System.out.println(" 3. 扫风模式切换");
+        System.out.println(" 4. 除湿模式切换");
+        System.out.println(" 5. 温度调节");
+        System.out.print("请选择操作(1-5)> ");
+        String choice = scanner.nextLine().trim();
 
-        switch (cmd) {
-            case "co":
-                System.out.print("请输入制冷温度 (16-30)> ");
-                String coolTemp = scanner.nextLine().trim();
-                // 添加温度范围验证
-                try {
-                    double temp = Double.parseDouble(coolTemp);
-                    if (temp < 16 || temp > 30) {
-                        System.out.println("输入失败：温度超出范围（16-30°C）");
-                        break;
-                    }
-                    sendCommand("ac", "cool_" + coolTemp); // 发送格式："cool_26"
-                } catch (NumberFormatException e) {
-                    System.out.println("输入失败：请输入有效的数字");
-                }
+        System.out.print("请输入要控制的空调ID (如ac1): ");
+        String acId = scanner.nextLine().trim();
+
+        switch (choice) {
+            case "1":
+                System.out.print("请选择开关状态(on/off): ");
+                String state = scanner.nextLine().trim();
+                sendCommand("ac", "switch_" + acId + "_" + state);
                 break;
-            case "he":
-                System.out.print("请输入制热温度 (16-30)> ");
-                String heatTemp = scanner.nextLine().trim();
-                // 添加温度范围验证
-                try {
-                    double temp = Double.parseDouble(heatTemp);
-                    if (temp < 16 || temp > 30) {
-                        System.out.println("输入失败：温度超出范围（16-30°C）");
-                        break;
-                    }
-                    sendCommand("ac", "heat_" + heatTemp); // 发送格式："heat_28"
-                } catch (NumberFormatException e) {
-                    System.out.println("输入失败：请输入有效的数字");
-                }
+            case "2":
+                sendCommand("ac", "cool_" + acId);
                 break;
-            case "fan":
-                sendCommand("ac", "fan"); // 风扇模式
+            case "3":
+                sendCommand("ac", "swing_" + acId);
                 break;
-            case "auto":
-                sendCommand("ac", "auto"); // 自动模式
+            case "4":
+                sendCommand("ac", "dehumidify_" + acId);
                 break;
-            case "e":
-                sendCommand("ac", "off"); // 关闭空调
+            case "5":
+                System.out.print("请输入温度 (16-30)> ");
+                String temp = scanner.nextLine().trim();
+                sendCommand("ac", "temp_" + acId + "_" + temp);
                 break;
             default:
-                System.out.println("无效空调命令");
+                System.out.println("无效选项");
         }
     }
 
