@@ -2,6 +2,8 @@ package HomeSimulator.furniture;
 
 import IDL.HomeStatus;
 import IDL.HomeStatusDataWriter;
+import HomeSimulator.HomeSimulator;
+import HomeSimulator.HomeSimulatorAlert;
 import com.zrdds.infrastructure.*;
 import com.zrdds.publication.DataWriterQos;
 import com.zrdds.publication.Publisher;
@@ -91,6 +93,16 @@ public class FurnitureManager {
         registerFurniture(bedroomLight);
        registerFurniture(livingRoomAC);
         registerFurniture(bedroomAC);
+
+        // 设置报警系统引用（通过HomeSimulator获取）
+        HomeSimulatorAlert alertSystem = HomeSimulator.getAlertSystem();
+        if (alertSystem != null) {
+            livingRoomLight.setAlertSystem(alertSystem);
+            bedroomLight.setAlertSystem(alertSystem);
+            livingRoomAC.setAlertSystem(alertSystem);
+            bedroomAC.setAlertSystem(alertSystem);
+            System.out.println("[FurnitureManager] 已为所有设备设置报警系统引用");
+        }
 
         System.out.println("[FurnitureManager] 默认家具初始化完成（共" + furnitureMap.size() + "个）");
     }

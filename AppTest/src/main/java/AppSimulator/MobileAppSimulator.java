@@ -1,12 +1,14 @@
 package AppSimulator;
 
+import AppSimulator.DDS.AlertSubscriber;
 import AppSimulator.DDS.CommandPublisher;
 import AppSimulator.DDS.DdsParticipant;
 import AppSimulator.DDS.StatusSubscriber;
+import com.zrdds.topic.Topic;
+import IDL.AlertTypeSupport;
 import IDL.CommandTypeSupport;
 import IDL.HomeStatusTypeSupport;
 import IDL.VehicleStatusTypeSupport;
-import com.zrdds.topic.Topic;
 
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,6 +18,7 @@ public class MobileAppSimulator {
 
     private CommandPublisher commandPublisher;
     private StatusSubscriber statusSubscriber;
+    private AlertSubscriber alertSubscriber;
     private AtomicBoolean running;
 
     public MobileAppSimulator() {
@@ -30,6 +33,7 @@ public class MobileAppSimulator {
         CommandTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Command");
         HomeStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "HomeStatus");
         VehicleStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleStatus");
+        AlertTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Alert");
 
         // 创建Topic
         Topic commandTopic = participant.createTopic("Command", CommandTypeSupport.get_instance());
@@ -42,6 +46,15 @@ public class MobileAppSimulator {
 
         statusSubscriber = new StatusSubscriber();
         statusSubscriber.start(participant.getSubscriber(), homeStatusTopic, vehicleStatusTopic);
+
+        // 初始化报警订阅器
+        Topic alertTopic = participant.createTopic("Alert", AlertTypeSupport.get_instance());
+        alertSubscriber = new AlertSubscriber(this);
+        if (alertSubscriber.start(participant.getSubscriber(), alertTopic)) {
+            System.out.println("报警监听已启动");
+        } else {
+            System.err.println("报警监听初始化失败");
+        }
 
         System.out.println("DDS 初始化完成");
     }
@@ -119,7 +132,6 @@ public class MobileAppSimulator {
 
     private void handleHomeCommands(Scanner scanner) {
         System.out.println("--- 家居控制 ---");
-        // 修改灯光控制为子菜单入口
         System.out.println(" a. 灯光控制 (进入子菜单)");
         System.out.println(" b. 空调控制 (进入子菜单)");
         System.out.print("请输入家居命令> ");
@@ -127,7 +139,7 @@ public class MobileAppSimulator {
 
         switch (input.toLowerCase()) {
             case "a":
-                handleLightCommands(scanner); // 新增灯光子菜单处理
+                handleLightCommands(scanner);
                 break;
             case "b":
                 handleAirConditionerCommands(scanner);
@@ -230,9 +242,22 @@ public class MobileAppSimulator {
 
     public void shutdown() {
         running.set(false);
+        if (alertSubscriber != null) {
+            // 监听器模式自动处理，无需手动停止
+        }
         DdsParticipant.getInstance().close();
         System.out.println("手机App已关闭");
         System.exit(0);
+    }
+
+    /**
+     * 显示报警信息
+     */
+    public void displayAlert(String alertMessage) {
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("📱 收到新的报警信息:");
+        System.out.println(alertMessage);
+        System.out.println("=".repeat(50));
     }
 
     private static void loadLibrary() {

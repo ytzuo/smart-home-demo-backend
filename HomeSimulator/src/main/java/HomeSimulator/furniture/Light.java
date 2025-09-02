@@ -1,5 +1,6 @@
 package HomeSimulator.furniture;
 
+import HomeSimulator.HomeSimulatorAlert;
 import IDL.HomeStatus;
 import IDL.HomeStatusDataWriter;
 import com.zrdds.infrastructure.InstanceHandle_t;
@@ -23,7 +24,7 @@ public class Light implements Furniture, AlertableDevice {
     private String alertType = "light_abnormal";
     private final Random random = new Random();
     private int abnormalCounter = 0;
-    private static final int ABNORMAL_THRESHOLD = 3;
+    private static final int ABNORMAL_THRESHOLD = 2;  // 降低阈值，更容易触发报警
     // ======== 预设状态字段（常驻显示用） ========
     private int brightness = 80; // 默认亮度（0-100）
     private String colorTemp = "暖白"; // 默认色温（暖白/冷白/中性）
@@ -36,6 +37,7 @@ public class Light implements Furniture, AlertableDevice {
     private boolean isOn; // 灯具状态（true=开，false=关）
     private HomeStatusDataWriter ddsWriter; // DDS数据写入器（用于上报状态）
     private FurnitureManager manager; // 家具管理器（用于更新全局状态）
+    private HomeSimulatorAlert alertSystem; // 报警系统引用
     private final List<StatusChangeListener> statusChangeListeners = new CopyOnWriteArrayList<>(); // 状态监听器集合
 
     /**
@@ -49,6 +51,14 @@ public class Light implements Furniture, AlertableDevice {
         this.isOn = false;     // 默认关闭
         this.ddsWriter = ddsWriter;
         this.manager = manager;
+    }
+    
+    /**
+     * 设置报警系统引用
+     * @param alertSystem 报警系统
+     */
+    public void setAlertSystem(HomeSimulatorAlert alertSystem) {
+        this.alertSystem = alertSystem;
     }
 
     // ======== 实现Furniture接口方法（核心修复：返回非null值） ========
@@ -121,22 +131,28 @@ public class Light implements Furniture, AlertableDevice {
             abnormalCounter++;
             
             // 连续异常达到阈值时触发报警
-            if (abnormalCounter >= ABNORMAL_THRESHOLD && !isAbnormal) {
-                isAbnormal = true;
-                
-                // 设置报警信息
-                if (statusAbnormal) {
-                    alertType = "light_status_abnormal";
-                    alertMessage = String.format("灯具 %s 状态异常，可能存在电路问题", name);
-                } else {
-                    alertType = "light_overheat";
-                    alertMessage = String.format("灯具 %s 温度异常，可能存在过热风险", name);
+                if (abnormalCounter >= ABNORMAL_THRESHOLD && !isAbnormal) {
+                    isAbnormal = true;
+                    
+                    // 设置报警信息
+                    if (statusAbnormal) {
+                        alertType = "light_status_abnormal";
+                        alertMessage = String.format("灯具 %s 状态异常，可能存在电路问题", name);
+                    } else {
+                        alertType = "light_overheat";
+                        alertMessage = String.format("灯具 %s 温度异常，可能存在过热风险", name);
+                    }
+                    
+                    System.out.printf("[Light] 检测到异常: ID=%s, 类型=%s, 消息=%s%n", 
+                            id, alertType, alertMessage);
+                    
+                    // 直接调用报警系统
+                    if (alertSystem != null) {
+                        alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
+                    }
+                    
+                    return true;
                 }
-                
-                System.out.printf("[Light] 检测到异常: ID=%s, 类型=%s, 消息=%s%n", 
-                        id, alertType, alertMessage);
-                return true;
-            }
         } else {
             // 正常状态，重置计数器
             if (abnormalCounter > 0) {
@@ -168,6 +184,11 @@ public class Light implements Furniture, AlertableDevice {
         alertMessage = "";
         abnormalCounter = 0;
         System.out.printf("[Light] 灯具 %s 恢复正常%n", name);
+        
+        // 通知报警系统清除报警
+        if (alertSystem != null) {
+            alertSystem.clearDeviceAlert(id);
+        }
     }
     
     @Override

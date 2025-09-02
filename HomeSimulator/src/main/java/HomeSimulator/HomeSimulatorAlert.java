@@ -7,7 +7,6 @@ import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
 import IDL.HomeStatus;
 import IDL.HomeStatusDataWriter;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -144,7 +143,7 @@ public class HomeSimulatorAlert {
         alertReporter.scheduleAtFixedRate(
                 this::reportAlertStatus, 
                 0, 
-                5, 
+                10,
                 TimeUnit.SECONDS);
                 
         // 启动设备监控
@@ -380,13 +379,14 @@ public class HomeSimulatorAlert {
 
     /**
      * 获取当前时间戳
-     * @return 格式化的时间戳字符串
+     * @return 格式化的时间字符串
      */
     private String getCurrentTimeStamp() {
-        LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        return now.format(formatter);
+        return LocalDateTime.now().format(formatter);
     }
+    
+
     
     /**
      * 监控设备状态
@@ -450,6 +450,40 @@ public class HomeSimulatorAlert {
         
         System.out.printf("[HomeSimulatorAlert] 收到设备报警: ID=%s, 类型=%s, 消息=%s%n", 
                 deviceId, alertType, alertMessage);
+    }
+    
+    /**
+     * 接收来自家具设备的独立报警
+     * @param deviceId 设备ID
+     * @param deviceType 设备类型
+     * @param alertType 报警类型
+     * @param message 报警消息
+     */
+    public void receiveDeviceAlert(String deviceId, String deviceType, String alertType, String message) {
+        System.out.printf("[HomeSimulatorAlert] 收到独立设备报警: ID=%s, 类型=%s, 报警=%s, 消息=%s%n", 
+                deviceId, deviceType, alertType, message);
+        
+        // 映射到系统报警类型
+        AlertType systemAlertType = mapToSystemAlertType(deviceType, alertType);
+        
+        // 构建完整的报警消息
+        String fullMessage = String.format("设备 %s: %s", deviceId, message);
+        
+        // 触发系统报警
+        triggerAlert(systemAlertType, fullMessage);
+    }
+    
+    /**
+     * 清除特定设备的报警
+     * @param deviceId 设备ID
+     */
+    public void clearDeviceAlert(String deviceId) {
+        System.out.printf("[HomeSimulatorAlert] 清除设备报警: ID=%s%n", deviceId);
+        
+        // 如果当前报警是由该设备触发的，则清除
+        if (alertActive.get() && alertMessage.contains(deviceId)) {
+            clearAlert();
+        }
     }
     
     /**

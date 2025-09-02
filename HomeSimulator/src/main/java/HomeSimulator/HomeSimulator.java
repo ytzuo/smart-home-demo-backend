@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class HomeSimulator {
     private static boolean hasLoad = false;
+    private static HomeSimulator instance; // 单例实例
 
     private DdsParticipant ddsParticipant;
     private CommandSubscriber commandSubscriber;
@@ -33,6 +34,15 @@ public class HomeSimulator {
     public HomeSimulator() {
         loadLibrary();
         this.running = new AtomicBoolean(false);
+        instance = this; // 设置单例实例
+    }
+    
+    /**
+     * 获取报警系统实例
+     * @return 报警系统实例
+     */
+    public static HomeSimulatorAlert getAlertSystem() {
+        return instance != null ? instance.alertSystem : null;
     }
 
     private void loadLibrary() {
@@ -97,6 +107,7 @@ public class HomeSimulator {
         
         // 4. 创建报警系统
         alertSystem = new HomeSimulatorAlert(ddsPublisher, homeStatusTopic);
+        alertSystem.setFurnitureManager(furnitureManager);
 
         System.out.println("[HomeSimulator] DDS初始化完成");
     }
@@ -148,15 +159,6 @@ public class HomeSimulator {
                 break;
             case "ac_off":
                 turnOffAllAirConditioners();
-                break;
-            // 添加报警相关命令处理
-            case "alert_test":
-                testDeviceAlert();
-                break;
-            case "alert_clear":
-                if (alertSystem != null) {
-                    alertSystem.clearAlert();
-                }
                 break;
             default:
                 System.err.println("[HomeSimulator] 未知的家居命令: " + action);
