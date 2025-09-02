@@ -2,15 +2,13 @@ package HomeSimulator;
 
 import HomeSimulator.DDS.DdsParticipant;
 import HomeSimulator.DDS.CommandSubscriber;
-import HomeSimulator.furniture.Furniture;
-import HomeSimulator.furniture.AirConditioner;
-import HomeSimulator.furniture.Light;
-import HomeSimulator.furniture.FurnitureManager;
+import HomeSimulator.furniture.*;
 import HomeSimulator.HomeSimulatorAlert.AlertType;
 import com.zrdds.infrastructure.*;
 import IDL.Command;
 import IDL.CommandTypeSupport;
 import IDL.HomeStatusTypeSupport;
+import IDL.AlertTypeSupport;
 import com.zrdds.publication.DataWriterQos;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
@@ -84,6 +82,7 @@ public class HomeSimulator {
         publishPresenceStatus();
 
         System.out.println("[HomeSimulator] 家居模拟器启动完成");
+        System.out.println("[HomeSimulator] 使用控制台命令触发报警: lt1(灯具状态异常), lh1(灯具过热), at1(空调温度异常), ap1(空调性能异常)");
 
         // 保持运行
         keepRunning();
@@ -97,17 +96,21 @@ public class HomeSimulator {
                 ddsParticipant.getDomainParticipant(), "Command");
         HomeStatusTypeSupport.get_instance().register_type(
                 ddsParticipant.getDomainParticipant(), "HomeStatus");
-// 添加Presence类型注册
         PresenceTypeSupport.get_instance().register_type(
                 ddsParticipant.getDomainParticipant(), "Presence");
+        AlertTypeSupport.get_instance().register_type(
+                ddsParticipant.getDomainParticipant(), "Alert");
+        
         // 创建Topic
         Topic commandTopic = ddsParticipant.createTopic(
                 "Command", CommandTypeSupport.get_instance());
         Topic homeStatusTopic = ddsParticipant.createTopic(
                 "HomeStatus", HomeStatusTypeSupport.get_instance());
-        // 添加Presence Topic
-        presenceTopic = ddsParticipant.createTopic(
+        Topic presenceTopic = ddsParticipant.createTopic(
                 "Presence", PresenceTypeSupport.get_instance());
+        Topic alertTopic = ddsParticipant.createTopic(
+                "Alert", AlertTypeSupport.get_instance());
+        
         // 初始化订阅者（命令接收）
         commandSubscriber = new CommandSubscriber();
         commandSubscriber.start(
@@ -115,12 +118,12 @@ public class HomeSimulator {
                 commandTopic,
                 this::handleCommand);
 
-        // 3. 创建家具管理器（传入DDS发布器和HomeStatus主题）
+        // 创建家具管理器（传入DDS发布器和HomeStatus主题）
         Publisher ddsPublisher = ddsParticipant.getPublisher();
         furnitureManager = new FurnitureManager(ddsPublisher, homeStatusTopic);
         
-        // 4. 创建报警系统
-        alertSystem = new HomeSimulatorAlert(ddsPublisher, homeStatusTopic);
+        // 创建报警系统
+        alertSystem = new HomeSimulatorAlert(ddsPublisher, homeStatusTopic, alertTopic);
         alertSystem.setFurnitureManager(furnitureManager);
 
         // 创建Presence DataWriter
@@ -222,23 +225,7 @@ public class HomeSimulator {
                 System.err.println("[HomeSimulator] 未知的家居命令: " + action);
         }
     }
-    /**
-     * 测试设备报警功能
-     * 模拟触发一个灯具异常报警
-     */
-    private void testDeviceAlert() {
-        if (alertSystem != null) {
-            List<Furniture> lights = furnitureManager.getFurnitureByType("light");
-            if (!lights.isEmpty()) {
-                Furniture light = lights.get(0);
-                alertSystem.triggerAlert(
-                    HomeSimulatorAlert.AlertType.LIGHT_ABNORMAL,
-                    String.format("灯具 %s 测试报警", light.getName())
-                );
-                System.out.println("[HomeSimulator] 触发测试报警");
-            }
-        }
-    }
+
 
     private void handleLightCommand(String action) {
         String[] parts = action.split("_");
@@ -416,12 +403,152 @@ public class HomeSimulator {
             }
         }));
 
+        // 启动控制台交互线程
+        startConsoleInteraction();
+
         try {
             while (running.get()) {
                 Thread.sleep(1000);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * 启动控制台交互功能
+     */
+    private void startConsoleInteraction() {
+        Thread consoleThread = new Thread(() -> {
+            java.util.Scanner scanner = new java.util.Scanner(System.in);
+            System.out.println("=== 控制台报警控制 ===");
+            System.out.println("输入命令触发报警：");
+            System.out.println("  lt1 - 触发light1状态异常报警");
+            System.out.println("  lh1 - 触发light1过热报警");
+            System.out.println("  at1 - 触发ac1温度异常报警");
+            System.out.println("  ap1 - 触发ac1性能异常报警");
+            System.out.println("  r1  - 重置light1报警");
+            System.out.println("  r2  - 重置ac1报警");
+            System.out.println("  q   - 退出程序");
+            System.out.println("====================");
+
+            while (running.get()) {
+                System.out.print("\n报警控制> ");
+                String input = scanner.nextLine().trim().toLowerCase();
+
+                switch (input) {
+                    case "lt1":
+                        triggerLightAlert("light1", "status");
+                        break;
+                    case "lh1":
+                        triggerLightAlert("light1", "overheat");
+                        break;
+                    case "at1":
+                        triggerAirConditionerAlert("ac1", "temperature");
+                        break;
+                    case "ap1":
+                        triggerAirConditionerAlert("ac1", "performance");
+                        break;
+                    case "r1":
+                        resetDeviceAlert("light1");
+                        break;
+                    case "r2":
+                        resetDeviceAlert("ac1");
+                        break;
+                    case "q":
+                        System.out.println("正在退出...");
+                        shutdown();
+                        break;
+                    default:
+                        System.out.println("无效命令，请重新输入");
+                }
+            }
+            scanner.close();
+        });
+        consoleThread.setDaemon(true);
+        consoleThread.start();
+    }
+
+    /**
+     * 触发灯具报警
+     */
+    private void triggerLightAlert(String deviceId, String alertType) {
+        try {
+            Light light = (Light)
+                furnitureManager.getFurnitureByType("light").stream()
+                    .filter(f -> deviceId.equals(f.getId()))
+                    .findFirst()
+                    .orElse(null);
+            
+            if (light != null) {
+                if ("status".equals(alertType)) {
+                    light.triggerStatusAbnormalAlert();
+                } else if ("overheat".equals(alertType)) {
+                    light.triggerOverheatAlert();
+                }
+            } else {
+                System.out.println("未找到设备: " + deviceId);
+            }
+        } catch (Exception e) {
+            System.out.println("触发报警失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 触发空调报警
+     */
+    private void triggerAirConditionerAlert(String deviceId, String alertType) {
+        try {
+            AirConditioner ac = (AirConditioner)
+                furnitureManager.getFurnitureByType("ac").stream()
+                    .filter(f -> deviceId.equals(f.getId()))
+                    .findFirst()
+                    .orElse(null);
+            
+            if (ac != null) {
+                if ("temperature".equals(alertType)) {
+                    ac.triggerTemperatureAbnormalAlert();
+                } else if ("performance".equals(alertType)) {
+                    ac.triggerPerformanceAbnormalAlert();
+                }
+            } else {
+                System.out.println("未找到设备: " + deviceId);
+            }
+        } catch (Exception e) {
+            System.out.println("触发报警失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 重置设备报警
+     */
+    private void resetDeviceAlert(String deviceId) {
+        try {
+            // 先从所有设备中查找，不限制类型
+            Furniture device = furnitureManager.getFurnitureByType("light").stream()
+                .filter(f -> deviceId.equals(f.getId()))
+                .findFirst()
+                .orElse(null);
+            if (device == null) {
+                device = furnitureManager.getFurnitureByType("ac").stream()
+                    .filter(f -> deviceId.equals(f.getId()))
+                    .findFirst()
+                    .orElse(null);
+            }
+
+            if (device instanceof AlertableDevice) {
+                ((AlertableDevice) device).resetAlert();
+                System.out.println("已重置设备报警: " + deviceId);
+                
+                // 确保报警系统也清除该设备的报警
+                if (alertSystem != null) {
+                    alertSystem.clearDeviceAlert(deviceId);
+                }
+            } else {
+                System.out.println("设备不支持报警重置: " + deviceId);
+            }
+        } catch (Exception e) {
+            System.out.println("重置报警失败: " + e.getMessage());
         }
     }
 

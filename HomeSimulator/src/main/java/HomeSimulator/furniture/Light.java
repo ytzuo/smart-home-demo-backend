@@ -120,52 +120,44 @@ public class Light implements Furniture, AlertableDevice {
     // ======== 实现AlertableDevice接口方法 ========
     @Override
     public boolean checkAbnormal() {
-        // 检测逻辑1：灯具状态异常变化（例如意外关闭）
-        boolean statusAbnormal = isOn && random.nextDouble() < 0.05; // 5%概率模拟灯具意外关闭
-        
-        // 检测逻辑2：灯具过热（模拟）
-        boolean tempAbnormal = isOn && brightness > 80 && random.nextDouble() < 0.08; // 高亮度时有8%概率过热
-        
-        // 如果检测到异常
-        if (statusAbnormal || tempAbnormal) {
-            abnormalCounter++;
+        // 原有的概率检测逻辑已移除，改为手动触发
+        return isAbnormal;
+    }
+    
+    /**
+     * 手动触发灯具状态异常报警
+     */
+    public void triggerStatusAbnormalAlert() {
+        if (!isAbnormal) {
+            isAbnormal = true;
+            alertType = "light_status_abnormal";
+            alertMessage = String.format("灯具 %s 状态异常，可能存在电路问题", name);
             
-            // 连续异常达到阈值时触发报警
-                if (abnormalCounter >= ABNORMAL_THRESHOLD && !isAbnormal) {
-                    isAbnormal = true;
-                    
-                    // 设置报警信息
-                    if (statusAbnormal) {
-                        alertType = "light_status_abnormal";
-                        alertMessage = String.format("灯具 %s 状态异常，可能存在电路问题", name);
-                    } else {
-                        alertType = "light_overheat";
-                        alertMessage = String.format("灯具 %s 温度异常，可能存在过热风险", name);
-                    }
-                    
-                    System.out.printf("[Light] 检测到异常: ID=%s, 类型=%s, 消息=%s%n", 
-                            id, alertType, alertMessage);
-                    
-                    // 直接调用报警系统
-                    if (alertSystem != null) {
-                        alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
-                    }
-                    
-                    return true;
-                }
-        } else {
-            // 正常状态，重置计数器
-            if (abnormalCounter > 0) {
-                abnormalCounter = 0;
-                
-                // 如果之前有报警，现在恢复正常
-                if (isAbnormal) {
-                    resetAlert();
-                }
+            System.out.printf("[Light] 手动触发异常: ID=%s, 类型=%s, 消息=%s%n", 
+                    id, alertType, alertMessage);
+            
+            if (alertSystem != null) {
+                alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
             }
         }
-        
-        return isAbnormal;
+    }
+    
+    /**
+     * 手动触发灯具过热报警
+     */
+    public void triggerOverheatAlert() {
+        if (!isAbnormal) {
+            isAbnormal = true;
+            alertType = "light_overheat";
+            alertMessage = String.format("灯具 %s 温度异常，可能存在过热风险", name);
+            
+            System.out.printf("[Light] 手动触发异常: ID=%s, 类型=%s, 消息=%s%n", 
+                    id, alertType, alertMessage);
+            
+            if (alertSystem != null) {
+                alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
+            }
+        }
     }
     
     @Override

@@ -68,7 +68,7 @@ public class StatusSubscriber {
         return true;
     }
 
-    // HomeStatus监听器（核心修改：适配deviceIds/deviceTypes/deviceStatus字段）
+    // HomeStatus监听器
     static class HomeStatusListener implements DataReaderListener {
         @Override
         public void on_data_available(DataReader reader) {
