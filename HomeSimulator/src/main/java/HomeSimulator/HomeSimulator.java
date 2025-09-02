@@ -7,13 +7,19 @@ import HomeSimulator.furniture.AirConditioner;
 import HomeSimulator.furniture.Light;
 import HomeSimulator.furniture.FurnitureManager;
 import HomeSimulator.HomeSimulatorAlert.AlertType;
-
+import com.zrdds.infrastructure.*;
 import IDL.Command;
 import IDL.CommandTypeSupport;
 import IDL.HomeStatusTypeSupport;
+import com.zrdds.publication.DataWriterQos;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
+import IDL.Presence;
+import IDL.PresenceTypeSupport;
+import IDL.PresenceDataWriter;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -30,7 +36,8 @@ public class HomeSimulator {
     private FurnitureManager furnitureManager; // 家具管理器（需DDS资源初始化）
     private HomeSimulatorAlert alertSystem;    // 报警系统
     private AtomicBoolean running;
-
+    private PresenceDataWriter presenceDataWriter;
+    private Topic presenceTopic;
     public HomeSimulator() {
         loadLibrary();
         this.running = new AtomicBoolean(false);
@@ -73,6 +80,9 @@ public class HomeSimulator {
         // 3. 启动报警系统
         alertSystem.start();
 
+        // 4. 发送一次Presence状态
+        publishPresenceStatus();
+
         System.out.println("[HomeSimulator] 家居模拟器启动完成");
 
         // 保持运行
@@ -87,13 +97,17 @@ public class HomeSimulator {
                 ddsParticipant.getDomainParticipant(), "Command");
         HomeStatusTypeSupport.get_instance().register_type(
                 ddsParticipant.getDomainParticipant(), "HomeStatus");
-
+// 添加Presence类型注册
+        PresenceTypeSupport.get_instance().register_type(
+                ddsParticipant.getDomainParticipant(), "Presence");
         // 创建Topic
         Topic commandTopic = ddsParticipant.createTopic(
                 "Command", CommandTypeSupport.get_instance());
         Topic homeStatusTopic = ddsParticipant.createTopic(
                 "HomeStatus", HomeStatusTypeSupport.get_instance());
-
+        // 添加Presence Topic
+        presenceTopic = ddsParticipant.createTopic(
+                "Presence", PresenceTypeSupport.get_instance());
         // 初始化订阅者（命令接收）
         commandSubscriber = new CommandSubscriber();
         commandSubscriber.start(
@@ -109,8 +123,52 @@ public class HomeSimulator {
         alertSystem = new HomeSimulatorAlert(ddsPublisher, homeStatusTopic);
         alertSystem.setFurnitureManager(furnitureManager);
 
+        // 创建Presence DataWriter
+        DataWriterQos presenceQos = new DataWriterQos();
+        ddsPublisher.get_default_datawriter_qos(presenceQos);
+        // 添加QoS配置
+        presenceQos.durability.kind = DurabilityQosPolicyKind.TRANSIENT_LOCAL_DURABILITY_QOS;
+        presenceQos.reliability.kind = ReliabilityQosPolicyKind.RELIABLE_RELIABILITY_QOS;
+        presenceQos.history.kind = HistoryQosPolicyKind.KEEP_LAST_HISTORY_QOS;
+        presenceQos.history.depth = 10;
+        presenceDataWriter = (PresenceDataWriter) ddsPublisher.create_datawriter(
+                presenceTopic, presenceQos, null, StatusKind.STATUS_MASK_NONE);
+
         System.out.println("[HomeSimulator] DDS初始化完成");
     }
+
+    // 添加Presence单次发送方法
+    private void publishPresenceStatus() {
+        if (presenceDataWriter == null) {
+            System.err.println("[HomeSimulator] Presence DataWriter未初始化");
+            return;
+        }
+
+        try {
+            // 获取所有设备状态
+            List<Furniture> allDevices = furnitureManager.getAllFurniture();
+            for (Furniture device : allDevices) {
+                Presence presence = new Presence();
+                presence.deviceId = device.getId();
+                presence.deviceType = device.getType();
+                presence.inRange = true; // 假设初始状态为在线
+                presence.timeStamp = LocalDateTime.now().format(
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+                // 发布状态
+                ReturnCode_t rtn = presenceDataWriter.write(presence, InstanceHandle_t.HANDLE_NIL_NATIVE);
+                if (rtn == ReturnCode_t.RETCODE_OK) {
+                    System.out.printf("[HomeSimulator] 发送Presence: %s(%s) - %s%n",
+                            device.getName(), device.getId(), presence.inRange ? "在线" : "离线");
+                } else {
+                    System.out.println("上报设备状态失败");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[HomeSimulator] 发送Presence失败: " + e.getMessage());
+        }
+    }
+
 
     private void handleCommand(Command command) {
         if (command == null) {
@@ -164,7 +222,6 @@ public class HomeSimulator {
                 System.err.println("[HomeSimulator] 未知的家居命令: " + action);
         }
     }
-    
     /**
      * 测试设备报警功能
      * 模拟触发一个灯具异常报警

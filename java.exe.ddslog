@@ -1,17 +1,17 @@
-********************  2025-09-02 15:57:31:957  ********************
+********************  2025-09-02 19:23:55:195  ********************
 Current ZRDDS version(2.4.4-r2761701) for SEU was compiled at Aug 22 2025 16:10:46
 *******************************************************************
-********************  2025-09-02 15:57:32:021  ********************
+********************  2025-09-02 19:23:55:283  ********************
 LOGINFO: LEVEL(WARNING)
 FUNC: DataWriterImpl.cpp:DataWriterQosCompatibleCheck(LINE: 8596)
-Match Reader (0189a8c0)(44590000)(00000000)(0e000004) failed: Durability incompatible in DataWriter (0189a8c0)(643e0000)(00000000)(0e000003) of Topic HomeStatus.
+Match Reader (01a8a8c0)(40430100)(00000000)(0f000004) failed: Durability incompatible in DataWriter (01a8a8c0)(04200100)(00000000)(10000003) of Topic HomeStatus.
 *******************************************************************
-********************  2025-09-02 15:57:32:021  ********************
+********************  2025-09-02 19:23:55:283  ********************
 LOGINFO: LEVEL(ERROR)
-FUNC: ZRSedp.cpp:ZRSedpAddDiscoveredDataReader(LINE: 5371)
-local writer((0189a8c0)(643e0000)(00000000)(0e000003)) match reader((0189a8c0)(44590000)(00000000)(0e000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
+FUNC: ZRSedp.cpp:ZRSedpAddLocalDataWriter(LINE: 2745)
+local((01a8a8c0)(04200100)(00000000)) associate writer((01a8a8c0)(04200100)(00000000)(10000003)) with reader((01a8a8c0)(40430100)(00000000)(0f000004)) failed(-1508963224)
 *******************************************************************
-********************  2025-09-02 16:05:51:830  ********************
+********************  2025-09-02 19:24:02:261  ********************
 LOGINFO: LEVEL(ERROR)
 FUNC: DomainParticipantFactoryImpl.cpp:DomainParticipantFactoryDeleteParticipant(LINE: 1215)
 can not found domainId(0).

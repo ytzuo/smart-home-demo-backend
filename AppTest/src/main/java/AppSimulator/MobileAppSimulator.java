@@ -4,11 +4,8 @@ import AppSimulator.DDS.AlertSubscriber;
 import AppSimulator.DDS.CommandPublisher;
 import AppSimulator.DDS.DdsParticipant;
 import AppSimulator.DDS.StatusSubscriber;
+import IDL.*;
 import com.zrdds.topic.Topic;
-import IDL.AlertTypeSupport;
-import IDL.CommandTypeSupport;
-import IDL.HomeStatusTypeSupport;
-import IDL.VehicleStatusTypeSupport;
 
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,18 +31,20 @@ public class MobileAppSimulator {
         HomeStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "HomeStatus");
         VehicleStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleStatus");
         AlertTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Alert");
-
+// 添加Presence类型注册
+        PresenceTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Presence");
         // 创建Topic
         Topic commandTopic = participant.createTopic("Command", CommandTypeSupport.get_instance());
         Topic homeStatusTopic = participant.createTopic("HomeStatus", HomeStatusTypeSupport.get_instance());
         Topic vehicleStatusTopic = participant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
-
+// 添加Presence Topic
+        Topic presenceTopic = participant.createTopic("Presence", PresenceTypeSupport.get_instance());
         // 初始化Publisher和Subscriber
         commandPublisher = new CommandPublisher();
         commandPublisher.start(participant.getPublisher(), commandTopic);
 
         statusSubscriber = new StatusSubscriber();
-        statusSubscriber.start(participant.getSubscriber(), homeStatusTopic, vehicleStatusTopic);
+        statusSubscriber.start(participant.getSubscriber(), homeStatusTopic, vehicleStatusTopic,presenceTopic);
 
         // 初始化报警订阅器
         Topic alertTopic = participant.createTopic("Alert", AlertTypeSupport.get_instance());

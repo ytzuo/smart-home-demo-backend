@@ -11,13 +11,15 @@ import com.zrdds.subscription.*;
 import com.zrdds.topic.Topic;
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import IDL.Presence;
+import IDL.PresenceDataReader;
+import IDL.PresenceSeq;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class StatusSubscriber {
 
-    public boolean start(Subscriber sub, Topic homeStatusTopic, Topic vehicleStatusTopic) {
+    public boolean start(Subscriber sub, Topic homeStatusTopic, Topic vehicleStatusTopic, Topic presenceTopic) {
         // 配置QoS
         DataReaderQos drQos = new DataReaderQos();
         sub.get_default_datareader_qos(drQos);
@@ -47,6 +49,18 @@ public class StatusSubscriber {
 
         if (vehicleStatusReader == null) {
             System.out.println("创建 VehicleStatusDataReader 失败");
+            return false;
+        }
+        // 创建Presence DataReader
+        PresenceDataReader presenceReader = (PresenceDataReader) sub.create_datareader(
+                presenceTopic,
+                drQos,
+                new PresenceListener(),
+                StatusKind.STATUS_MASK_ALL
+        );
+
+        if (presenceReader == null) {
+            System.out.println("创建 PresenceDataReader 失败");
             return false;
         }
 
@@ -166,6 +180,50 @@ public class StatusSubscriber {
             dr.return_loan(dataSeq, infoSeq);
         }
 
+        @Override public void on_liveliness_changed(DataReader dr, LivelinessChangedStatus s) {}
+        @Override public void on_requested_deadline_missed(DataReader dr, RequestedDeadlineMissedStatus s) {}
+        @Override public void on_requested_incompatible_qos(DataReader dr, RequestedIncompatibleQosStatus s) {}
+        @Override public void on_sample_lost(DataReader dr, SampleLostStatus s) {}
+        @Override public void on_sample_rejected(DataReader dr, SampleRejectedStatus s) {}
+        @Override public void on_subscription_matched(DataReader dr, SubscriptionMatchedStatus s) {}
+        @Override public void on_data_arrived(DataReader dr, Object o, SampleInfo si) {}
+    }
+    static class PresenceListener implements DataReaderListener {
+        @Override
+        public void on_data_available(DataReader reader) {
+            PresenceDataReader dr = (PresenceDataReader) reader;
+            PresenceSeq dataSeq = new PresenceSeq();
+            SampleInfoSeq infoSeq = new SampleInfoSeq();
+
+            try {
+                ReturnCode_t rtn = dr.take(dataSeq, infoSeq, -1,
+                        SampleStateKind.ANY_SAMPLE_STATE,
+                        ViewStateKind.ANY_VIEW_STATE,
+                        InstanceStateKind.ANY_INSTANCE_STATE);
+
+                if (rtn != ReturnCode_t.RETCODE_OK) {
+                    System.out.println("读取 Presence 数据失败，返回码: " + rtn);
+                    return;
+                }
+
+                for (int i = 0; i < dataSeq.length(); i++) {
+                    if (infoSeq.get_at(i).valid_data) {
+                        Presence data = dataSeq.get_at(i);
+                        System.out.println("\n===== 接收到设备在线状态 ======");
+                        System.out.printf("设备ID: %s\n", data.deviceId);
+                        System.out.printf("设备类型: %s\n", data.deviceType);
+                        System.out.printf("在线状态: %s\n", data.inRange ? "在线" : "离线");
+                        System.out.printf("时间戳: %s\n", data.timeStamp);
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("处理Presence数据异常: " + e.getMessage());
+            } finally {
+                dr.return_loan(dataSeq, infoSeq);
+            }
+        }
+
+        // 实现其他必要的接口方法（空实现）
         @Override public void on_liveliness_changed(DataReader dr, LivelinessChangedStatus s) {}
         @Override public void on_requested_deadline_missed(DataReader dr, RequestedDeadlineMissedStatus s) {}
         @Override public void on_requested_incompatible_qos(DataReader dr, RequestedIncompatibleQosStatus s) {}
