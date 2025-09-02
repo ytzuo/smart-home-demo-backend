@@ -68,8 +68,9 @@ public class StatusPublisher {
         // 发布状态
         ReturnCode_t rtn = writer.write(vehicleStatus, InstanceHandle_t.HANDLE_NIL_NATIVE);
         if (rtn == ReturnCode_t.RETCODE_OK) {
-            System.out.printf("已上报车辆状态: EngineOn=%b, DoorsLocked=%b, Fuel=%.1f%%%n",
-                    vehicleStatus.engineOn, vehicleStatus.doorsLocked, vehicleStatus.fuelPercent);
+            System.out.printf("已上报车辆状态: EngineOn=%b, DoorsLocked=%b, Fuel=%.1f%%, ACOn=%b, Location=%s, Time=%s%n",
+                    vehicleStatus.engineOn, vehicleStatus.doorsLocked, vehicleStatus.fuelPercent,
+                    vehicleStatus.acOn, vehicleStatus.location, vehicleStatus.timeStamp);
         } else {
             System.out.println("上报车辆状态失败");
         }
