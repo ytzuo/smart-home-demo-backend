@@ -6,77 +6,90 @@ import com.zrdds.infrastructure.InstanceHandle_t;
 import com.zrdds.infrastructure.ReturnCode_t;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * 空调类 - 实现Furniture接口，遵循与Light.java相同的设计模式
+ * 空调类 - 实现Furniture接口和AlertableDevice接口
+ * 合并 feature/alert/9.1 与 master 分支功能
  */
-public class AirConditioner implements Furniture {
-    // 空调状态字段
-    private boolean isOn; // 开关状态
-    private boolean coolingMode; // 制冷模式
-    private boolean swingMode; // 扫风模式
-    private boolean dehumidificationMode; // 除湿模式
-    private int temperature; // 温度设置(16-30℃)
+public class AirConditioner implements Furniture, AlertableDevice {
+    // ======== 枚举：运行模式 ========
+    public enum Mode {
+        OFF("off"), COOL("cool"), HEAT("heat"), FAN("fan"), AUTO("auto");
+        private final String value;
+        Mode(String value) { this.value = value; }
+        public String getValue() { return value; }
+        public static Mode fromString(String mode) {
+            for (Mode m : Mode.values()) {
+                if (m.value.equalsIgnoreCase(mode)) return m;
+            }
+            return OFF;
+        }
+    }
 
-    // 家具基础信息
+    // ======== 基础属性 ========
     private final String id;
     private final String name;
-    private final String type;
+    private final String type = "ac";
+
+    // 状态字段
+    private boolean isOn;
+    private Mode currentMode;
+    private double targetTemperature;
+    private double currentTemperature;
+
+    // 功能字段
+    private boolean coolingMode;
+    private boolean swingMode;
+    private boolean dehumidificationMode;
+    private int temperature;
 
     // DDS相关
-    private HomeStatusDataWriter ddsWriter; // DDS数据写入器
-    private FurnitureManager manager; // 家具管理器
-    private final List<StatusChangeListener> statusChangeListeners = new CopyOnWriteArrayList<>(); // 状态监听器集合
+    private HomeStatusDataWriter ddsWriter;
+    private FurnitureManager manager;
+    private final List<StatusChangeListener> statusChangeListeners = new CopyOnWriteArrayList<>();
+
+    // 报警相关
+    private boolean isAbnormal = false;
+    private String alertMessage = "";
+    private String alertType = "ac_abnormal";
+    private final Random random = new Random();
+    private int abnormalCounter = 0;
+    private static final int ABNORMAL_THRESHOLD = 3;
 
     /**
      * 构造函数
      */
     public AirConditioner(String id, String name, HomeStatusDataWriter ddsWriter, FurnitureManager manager) {
-        this.id = id;          // 初始化ID
-        this.name = name;      // 初始化名称
-        this.type = "ac";      // 固定类型为"ac"
+        this.id = id;
+        this.name = name;
         this.ddsWriter = ddsWriter;
         this.manager = manager;
 
-        // 默认状态初始化
-        this.isOn = false;     // 默认关闭
-        this.coolingMode = false; // 默认关闭制冷
-        this.swingMode = false; // 默认关闭扫风
-        this.dehumidificationMode = false; // 默认关闭除湿
-        this.temperature = 25; // 默认温度25℃
+        this.isOn = false;
+        this.currentMode = Mode.OFF;
+        this.targetTemperature = 25.0;
+        this.currentTemperature = 25.0;
+        this.temperature = 25;
+        this.coolingMode = false;
+        this.swingMode = false;
+        this.dehumidificationMode = false;
     }
 
-    // ======== 实现Furniture接口方法 ========
-    @Override
-    public String getId() {
-        return id;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public String getType() {
-        return type;
-    }
-
-    @Override
-    public String getStatus() {
-        return isOn ? "on" : "off";
-    }
+    // ======== Furniture接口实现 ========
+    @Override public String getId() { return id; }
+    @Override public String getName() { return name; }
+    @Override public String getType() { return type; }
+    @Override public String getStatus() { return isOn ? "on" : "off"; }
 
     @Override
     public String getStatusDescription() {
-        if (!isOn) {
-            return getName() + "状态: 关闭";
-        }
+        if (!isOn) return getName() + "状态: 关闭";
         return String.format("%s状态: 开启 [温度: %d℃, 制冷: %s, 扫风: %s, 除湿: %s]",
                 getName(), temperature,
                 coolingMode ? "开启" : "关闭",
@@ -90,86 +103,46 @@ public class AirConditioner implements Furniture {
             System.err.println("[AirConditioner] 无效状态: " + newStatus);
             return false;
         }
-
         boolean oldStatus = isOn;
         isOn = "on".equals(newStatus);
         if (oldStatus != isOn) {
-            publishStatus(); // 状态变更时上报DDS
+            publishStatus();
             notifyStatusChange(oldStatus ? "on" : "off", newStatus);
         }
         return true;
     }
 
-    @Override
-    public void addStatusChangeListener(StatusChangeListener listener) {
-        statusChangeListeners.add(listener);
-    }
+    @Override public void addStatusChangeListener(StatusChangeListener l) { statusChangeListeners.add(l); }
+    @Override public void removeStatusChangeListener(StatusChangeListener l) { statusChangeListeners.remove(l); }
 
-    @Override
-    public void removeStatusChangeListener(StatusChangeListener listener) {
-        statusChangeListeners.remove(listener);
-    }
-
-    // ======== 状态字段的getter/setter方法 ========
-    public boolean isOn() { return isOn; }
-    public void setOn(boolean on) { this.isOn = on; publishStatus(); }
-
-    public boolean isCoolingMode() { return coolingMode; }
-    public void setCoolingMode(boolean coolingMode) { this.coolingMode = coolingMode; publishStatus(); }
-
-    public boolean isSwingMode() { return swingMode; }
-    public void setSwingMode(boolean swingMode) { this.swingMode = swingMode; publishStatus(); }
-
-    public boolean isDehumidificationMode() { return dehumidificationMode; }
-    public void setDehumidificationMode(boolean dehumidificationMode) { this.dehumidificationMode = dehumidificationMode; publishStatus(); }
-
-    public int getTemperature() { return temperature; }
-    public void setTemperature(int temperature) {
-        // 限制温度范围16-30℃
-        this.temperature = Math.max(16, Math.min(30, temperature));
-        publishStatus();
-    }
-
-    /**
-     * 上报状态到DDS
-     */
+    // ======== 状态更新 ========
     public void publishStatus() {
         if (ddsWriter == null) {
             System.err.println("[AirConditioner] DDS写入器未初始化，无法上报状态");
             return;
         }
-
         try {
             HomeStatus status = new HomeStatus();
             int acIndex = getAcIndex();
+            status.timeStamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-            // 添加时间戳
-            DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            status.timeStamp = LocalDateTime.now().format(timestampFormatter);
-
-            // 构建JSON对象
             JSONObject statusJson = new JSONObject();
-
-            // 构建状态数组 [开关, 制冷, 扫风, 除湿]
             JSONArray statusArray = new JSONArray();
-            statusArray.put(isOn ? 1 : 0);          // status[0]: 开关状态
-            statusArray.put(coolingMode ? 1 : 0);   // status[1]: 制冷模式
-            statusArray.put(swingMode ? 1 : 0);     // status[2]: 扫风模式
-            statusArray.put(dehumidificationMode ? 1 : 0); // status[3]: 除湿模式
+            statusArray.put(isOn ? 1 : 0);
+            statusArray.put(coolingMode ? 1 : 0);
+            statusArray.put(swingMode ? 1 : 0);
+            statusArray.put(dehumidificationMode ? 1 : 0);
             statusJson.put("status", statusArray);
 
-            // 构建参数数组 [温度]
             JSONArray paramsArray = new JSONArray();
-            paramsArray.put(temperature);           // params[0]: 温度
+            paramsArray.put(temperature);
             statusJson.put("params", paramsArray);
 
-            // 更新deviceStatus字段
             if (status.deviceStatus.length() <= acIndex) {
                 status.deviceStatus.ensure_length(acIndex + 1, acIndex + 1);
             }
             status.deviceStatus.set_at(acIndex, statusJson.toString());
 
-            // 关联设备ID和类型
             if (status.deviceIds.length() <= acIndex) {
                 status.deviceIds.ensure_length(acIndex + 1, acIndex + 1);
                 status.deviceTypes.ensure_length(acIndex + 1, acIndex + 1);
@@ -177,7 +150,6 @@ public class AirConditioner implements Furniture {
             status.deviceIds.set_at(acIndex, this.id);
             status.deviceTypes.set_at(acIndex, this.type);
 
-            // 发布状态
             ReturnCode_t result = ddsWriter.write(status, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (result == ReturnCode_t.RETCODE_OK) {
                 System.out.printf("[AirConditioner] %s状态上报: %s%n", getName(), statusJson.toString());
@@ -189,25 +161,79 @@ public class AirConditioner implements Furniture {
         }
     }
 
-    /**
-     * 获取空调索引
-     */
     private int getAcIndex() {
         try {
             String numericPart = getId().replaceAll("[^0-9]", "");
             return Integer.parseInt(numericPart) - 1;
         } catch (NumberFormatException e) {
-            System.err.println("[AirConditioner] 空调ID格式错误（应为acX）: " + getId());
+            System.err.println("[AirConditioner] 空调ID格式错误: " + getId());
             return -1;
         }
     }
 
-    /**
-     * 通知状态变更监听器
-     */
     public void notifyStatusChange(String oldStatus, String newStatus) {
-        for (StatusChangeListener listener : statusChangeListeners) {
-            listener.onStatusChanged(getId(), oldStatus, newStatus);
+        for (StatusChangeListener l : statusChangeListeners) {
+            l.onStatusChanged(getId(), oldStatus, newStatus);
         }
     }
+
+    // ======== AlertableDevice接口实现 ========
+    public void updateCurrentTemperature() {
+        if (currentMode == Mode.OFF) {
+            currentTemperature += (28.0 - currentTemperature) * 0.1;
+        } else if (currentMode == Mode.COOL) {
+            currentTemperature -= 0.5 + random.nextDouble() * 0.3;
+            if (currentTemperature < targetTemperature) currentTemperature = targetTemperature;
+        } else if (currentMode == Mode.HEAT) {
+            currentTemperature += 0.5 + random.nextDouble() * 0.3;
+            if (currentTemperature > targetTemperature) currentTemperature = targetTemperature;
+        }
+    }
+
+    @Override
+    public boolean checkAbnormal() {
+        updateCurrentTemperature();
+        boolean tempAbnormal = false;
+        if (currentMode != Mode.OFF) {
+            double diff = Math.abs(currentTemperature - targetTemperature);
+            tempAbnormal = diff > 5.0 && random.nextDouble() < 0.1;
+        }
+        boolean performanceAbnormal = false;
+        if (currentMode == Mode.COOL && currentTemperature > targetTemperature + 3) {
+            performanceAbnormal = random.nextDouble() < 0.15;
+        } else if (currentMode == Mode.HEAT && currentTemperature < targetTemperature - 3) {
+            performanceAbnormal = random.nextDouble() < 0.15;
+        }
+        if (tempAbnormal || performanceAbnormal) {
+            abnormalCounter++;
+            if (abnormalCounter >= ABNORMAL_THRESHOLD && !isAbnormal) {
+                isAbnormal = true;
+                if (tempAbnormal) {
+                    alertType = "ac_temperature_abnormal";
+                    alertMessage = String.format("空调 %s 温度异常: 当前%.1f℃, 目标%.1f℃",
+                            name, currentTemperature, targetTemperature);
+                } else {
+                    alertType = "ac_performance_abnormal";
+                    alertMessage = String.format("空调 %s %s效果异常，可能需要维修",
+                            name, currentMode == Mode.COOL ? "制冷" : "制热");
+                }
+                return true;
+            }
+        } else {
+            if (abnormalCounter > 0) abnormalCounter = 0;
+            if (isAbnormal) resetAlert();
+        }
+        return isAbnormal;
+    }
+
+    @Override public String getAlertMessage() { return alertMessage; }
+    @Override public String getAlertType() { return alertType; }
+    @Override public void resetAlert() {
+        isAbnormal = false;
+        alertMessage = "";
+        abnormalCounter = 0;
+        System.out.printf("[AirConditioner] 空调 %s 恢复正常%n", name);
+    }
+    @Override public String getDeviceId() { return id; }
+    @Override public String getDeviceType() { return "ac"; }
 }

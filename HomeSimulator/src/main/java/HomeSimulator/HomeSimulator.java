@@ -2,15 +2,21 @@ package HomeSimulator;
 
 import HomeSimulator.DDS.DdsParticipant;
 import HomeSimulator.DDS.CommandSubscriber;
+import HomeSimulator.furniture.Furniture;
 import HomeSimulator.furniture.AirConditioner;
+import HomeSimulator.furniture.Light;
 import HomeSimulator.furniture.FurnitureManager;
+import HomeSimulator.HomeSimulatorAlert.AlertType;
+
 import IDL.Command;
 import IDL.CommandTypeSupport;
 import IDL.HomeStatusTypeSupport;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
+
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import HomeSimulator.furniture.Light;
+
 /**
  * HomeSimulator主控制器
  * 协调DDS通信、家具管理和状态上报等各模块工作
@@ -21,6 +27,7 @@ public class HomeSimulator {
     private DdsParticipant ddsParticipant;
     private CommandSubscriber commandSubscriber;
     private FurnitureManager furnitureManager; // 家具管理器（需DDS资源初始化）
+    private HomeSimulatorAlert alertSystem;    // 报警系统
     private AtomicBoolean running;
 
     public HomeSimulator() {
@@ -47,11 +54,14 @@ public class HomeSimulator {
 
         running.set(true);
 
-        // 1. 先初始化DDS（获取Publisher和Topic，供FurnitureManager使用）
+        // 1. 初始化DDS（获取Publisher和Topic，供FurnitureManager使用）
         initDDS();
 
         // 2. 初始化家具管理器（传入DDS资源）
         furnitureManager.start();
+        
+        // 3. 启动报警系统
+        alertSystem.start();
 
         System.out.println("[HomeSimulator] 家居模拟器启动完成");
 
@@ -84,6 +94,9 @@ public class HomeSimulator {
         // 3. 创建家具管理器（传入DDS发布器和HomeStatus主题）
         Publisher ddsPublisher = ddsParticipant.getPublisher();
         furnitureManager = new FurnitureManager(ddsPublisher, homeStatusTopic);
+        
+        // 4. 创建报警系统
+        alertSystem = new HomeSimulatorAlert(ddsPublisher, homeStatusTopic);
 
         System.out.println("[HomeSimulator] DDS初始化完成");
     }
@@ -136,8 +149,35 @@ public class HomeSimulator {
             case "ac_off":
                 turnOffAllAirConditioners();
                 break;
+            // 添加报警相关命令处理
+            case "alert_test":
+                testDeviceAlert();
+                break;
+            case "alert_clear":
+                if (alertSystem != null) {
+                    alertSystem.clearAlert();
+                }
+                break;
             default:
                 System.err.println("[HomeSimulator] 未知的家居命令: " + action);
+        }
+    }
+    
+    /**
+     * 测试设备报警功能
+     * 模拟触发一个灯具异常报警
+     */
+    private void testDeviceAlert() {
+        if (alertSystem != null) {
+            List<Furniture> lights = furnitureManager.getFurnitureByType("light");
+            if (!lights.isEmpty()) {
+                Furniture light = lights.get(0);
+                alertSystem.triggerAlert(
+                    HomeSimulatorAlert.AlertType.LIGHT_ABNORMAL,
+                    String.format("灯具 %s 测试报警", light.getName())
+                );
+                System.out.println("[HomeSimulator] 触发测试报警");
+            }
         }
     }
 
@@ -165,7 +205,6 @@ public class HomeSimulator {
 
         switch (operation.toLowerCase()) {
             case "switch":
-                // 复用现有开关方法
                 if ("on".equals(param)) {
                     turnOnLight(lightId);
                 } else if ("off".equals(param)) {
@@ -278,48 +317,46 @@ public class HomeSimulator {
 
     private void turnOnAllLights() {
         furnitureManager.getFurnitureByType("light").forEach(light -> {
-            light.setStatus("on"); // 触发灯具独立上报状态
+            light.setStatus("on");
         });
         System.out.println("[HomeSimulator] 已开启所有灯光");
     }
 
     private void turnOffAllLights() {
         furnitureManager.getFurnitureByType("light").forEach(light -> {
-            light.setStatus("off"); // 触发灯具独立上报状态
+            light.setStatus("off");
         });
         System.out.println("[HomeSimulator] 已关闭所有灯光");
     }
 
     private void turnOnAllAirConditioners() {
         furnitureManager.getFurnitureByType("ac").forEach(ac -> {
-            ac.setStatus("cool"); // 默认制冷模式，触发空调独立上报状态
+            ac.setStatus("cool");
         });
         System.out.println("[HomeSimulator] 已开启所有空调");
     }
 
     private void turnOffAllAirConditioners() {
         furnitureManager.getFurnitureByType("ac").forEach(ac -> {
-            ac.setStatus("off"); // 触发空调独立上报状态
+            ac.setStatus("off");
         });
         System.out.println("[HomeSimulator] 已关闭所有空调");
     }
 
     private void setAllAirConditionersMode(String mode) {
         furnitureManager.getFurnitureByType("ac").forEach(ac -> {
-            ac.setStatus(mode); // 触发空调独立上报状态
+            ac.setStatus(mode);
         });
         System.out.printf("[HomeSimulator] 已设置所有空调为%s模式%n", mode);
     }
 
     private void keepRunning() {
-        // 添加关闭钩子
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             if (running.get()) {
                 shutdown();
             }
         }));
 
-        // 保持主线程运行
         try {
             while (running.get()) {
                 Thread.sleep(1000);
@@ -337,17 +374,18 @@ public class HomeSimulator {
         System.out.println("[HomeSimulator] 正在关闭家居模拟器...");
         running.set(false);
 
-        // 停止家具管理器
         if (furnitureManager != null) {
             furnitureManager.stop();
         }
+        
+        if (alertSystem != null) {
+            alertSystem.stop();
+        }
 
-        // 停止DDS订阅者
         if (commandSubscriber != null) {
             commandSubscriber.stop();
         }
 
-        // 关闭DDS连接
         if (ddsParticipant != null) {
             ddsParticipant.close();
         }

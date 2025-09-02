@@ -11,12 +11,20 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Random;
 
 /**
- * 灯具类 - 独立实现状态上报逻辑
+ * 灯具类 - 独立实现状态上报逻辑，支持独立报警
  */
-public class Light implements Furniture {
-    // ======== 新增：预设状态字段（常驻显示用） ========
+public class Light implements Furniture, AlertableDevice {
+    // 报警相关属性
+    private boolean isAbnormal = false;
+    private String alertMessage = "";
+    private String alertType = "light_abnormal";
+    private final Random random = new Random();
+    private int abnormalCounter = 0;
+    private static final int ABNORMAL_THRESHOLD = 3;
+    // ======== 预设状态字段（常驻显示用） ========
     private int brightness = 80; // 默认亮度（0-100）
     private String colorTemp = "暖白"; // 默认色温（暖白/冷白/中性）
     private String sceneMode = "日常"; // 默认场景模式（日常/阅读/睡眠/影院）
@@ -98,6 +106,79 @@ public class Light implements Furniture {
     // ======== 预设状态的getter/setter（供外部修改） ========
     public int getBrightness() { return brightness; }
     public void setBrightness(int brightness) { this.brightness = Math.max(0, Math.min(100, brightness)); } // 限制0-100
+    
+    // ======== 实现AlertableDevice接口方法 ========
+    @Override
+    public boolean checkAbnormal() {
+        // 检测逻辑1：灯具状态异常变化（例如意外关闭）
+        boolean statusAbnormal = isOn && random.nextDouble() < 0.05; // 5%概率模拟灯具意外关闭
+        
+        // 检测逻辑2：灯具过热（模拟）
+        boolean tempAbnormal = isOn && brightness > 80 && random.nextDouble() < 0.08; // 高亮度时有8%概率过热
+        
+        // 如果检测到异常
+        if (statusAbnormal || tempAbnormal) {
+            abnormalCounter++;
+            
+            // 连续异常达到阈值时触发报警
+            if (abnormalCounter >= ABNORMAL_THRESHOLD && !isAbnormal) {
+                isAbnormal = true;
+                
+                // 设置报警信息
+                if (statusAbnormal) {
+                    alertType = "light_status_abnormal";
+                    alertMessage = String.format("灯具 %s 状态异常，可能存在电路问题", name);
+                } else {
+                    alertType = "light_overheat";
+                    alertMessage = String.format("灯具 %s 温度异常，可能存在过热风险", name);
+                }
+                
+                System.out.printf("[Light] 检测到异常: ID=%s, 类型=%s, 消息=%s%n", 
+                        id, alertType, alertMessage);
+                return true;
+            }
+        } else {
+            // 正常状态，重置计数器
+            if (abnormalCounter > 0) {
+                abnormalCounter = 0;
+                
+                // 如果之前有报警，现在恢复正常
+                if (isAbnormal) {
+                    resetAlert();
+                }
+            }
+        }
+        
+        return isAbnormal;
+    }
+    
+    @Override
+    public String getAlertMessage() {
+        return alertMessage;
+    }
+    
+    @Override
+    public String getAlertType() {
+        return alertType;
+    }
+    
+    @Override
+    public void resetAlert() {
+        isAbnormal = false;
+        alertMessage = "";
+        abnormalCounter = 0;
+        System.out.printf("[Light] 灯具 %s 恢复正常%n", name);
+    }
+    
+    @Override
+    public String getDeviceId() {
+        return id;
+    }
+    
+    @Override
+    public String getDeviceType() {
+        return type;
+    }
 
     public String getColorTemp() { return colorTemp; }
     public void setColorTemp(String colorTemp) {
