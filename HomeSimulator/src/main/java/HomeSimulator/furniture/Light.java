@@ -24,7 +24,7 @@ public class Light implements Furniture, AlertableDevice {
     private final Random random = new Random();
     private int abnormalCounter = 0;
     private static final int ABNORMAL_THRESHOLD = 3;
-    // ======== 新增：预设状态字段（常驻显示用） ========
+    // ======== 预设状态字段（常驻显示用） ========
     private int brightness = 80; // 默认亮度（0-100）
     private String colorTemp = "暖白"; // 默认色温（暖白/冷白/中性）
     private String sceneMode = "日常"; // 默认场景模式（日常/阅读/睡眠/影院）
