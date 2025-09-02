@@ -1,5 +1,6 @@
 package HomeSimulator.furniture;
 
+import HomeSimulator.HomeSimulatorAlert;
 import IDL.HomeStatus;
 import IDL.HomeStatusDataWriter;
 import com.zrdds.infrastructure.InstanceHandle_t;
@@ -52,6 +53,7 @@ public class AirConditioner implements Furniture, AlertableDevice {
     // DDS相关
     private HomeStatusDataWriter ddsWriter;
     private FurnitureManager manager;
+    private HomeSimulatorAlert alertSystem; // 报警系统引用
     private final List<StatusChangeListener> statusChangeListeners = new CopyOnWriteArrayList<>();
 
     // 报警相关
@@ -60,7 +62,7 @@ public class AirConditioner implements Furniture, AlertableDevice {
     private String alertType = "ac_abnormal";
     private final Random random = new Random();
     private int abnormalCounter = 0;
-    private static final int ABNORMAL_THRESHOLD = 3;
+    private static final int ABNORMAL_THRESHOLD = 2;  // 降低阈值，更容易触发报警
 
     /**
      * 构造函数
@@ -79,6 +81,14 @@ public class AirConditioner implements Furniture, AlertableDevice {
         this.coolingMode = false;
         this.swingMode = false;
         this.dehumidificationMode = false;
+    }
+    
+    /**
+     * 设置报警系统引用
+     * @param alertSystem 报警系统
+     */
+    public void setAlertSystem(HomeSimulatorAlert alertSystem) {
+        this.alertSystem = alertSystem;
     }
 
     // ======== Furniture接口实现 ========
@@ -235,6 +245,12 @@ public class AirConditioner implements Furniture, AlertableDevice {
                     alertMessage = String.format("空调 %s %s效果异常，可能需要维修",
                             name, currentMode == Mode.COOL ? "制冷" : "制热");
                 }
+                
+                // 直接调用报警系统
+                if (alertSystem != null) {
+                    alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
+                }
+                
                 return true;
             }
         } else {
@@ -251,6 +267,11 @@ public class AirConditioner implements Furniture, AlertableDevice {
         alertMessage = "";
         abnormalCounter = 0;
         System.out.printf("[AirConditioner] 空调 %s 恢复正常%n", name);
+        
+        // 通知报警系统清除报警
+        if (alertSystem != null) {
+            alertSystem.clearDeviceAlert(id);
+        }
     }
     @Override public String getDeviceId() { return id; }
     @Override public String getDeviceType() { return "ac"; }
