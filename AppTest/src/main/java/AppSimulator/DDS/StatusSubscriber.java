@@ -12,6 +12,9 @@ import com.zrdds.topic.Topic;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 public class StatusSubscriber {
 
     public boolean start(Subscriber sub, Topic homeStatusTopic, Topic vehicleStatusTopic) {
@@ -79,16 +82,28 @@ public class StatusSubscriber {
                             String deviceType = data.deviceTypes.get_at(idx);
                             String statusJson = data.deviceStatus.get_at(idx);
 
+                            // ======== 修正：直接获取全局时间戳（非序列字段） ========
+                            String formattedTime = "未知时间";
+                            try {
+                                // 1. 直接获取HomeStatus的全局时间戳（假设为字符串类型，非Sequence）
+                                String rawTimestamp = data.timeStamp;  // 无需get_at(idx)，因为不是按设备索引的序列
+
+                                // 2. 格式化为“yyyy年MM月”
+                                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                                LocalDateTime dateTime = LocalDateTime.parse(rawTimestamp, inputFormatter);
+                                DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");
+                                formattedTime = dateTime.format(outputFormatter);
+                            } catch (Exception e) {
+                                System.err.printf("时间戳解析失败: %s%n", e.getMessage());
+                            }
+
                             // ======== 新增：JSON格式验证 ========
                             // 1. 非空检查
                             if (statusJson == null || statusJson.trim().isEmpty()) {
-                                System.err.printf("设备 %s (类型: %s) 状态为空，跳过解析%n", deviceId, deviceType);
                                 continue;
                             }
                             // 2. JSON格式预验证（必须以 '{' 开头）
                             if (!statusJson.trim().startsWith("{")) {
-                                System.err.printf("设备 %s (类型: %s) 状态格式错误，非JSON对象: %s%n",
-                                        deviceId, deviceType, statusJson);
                                 continue;
                             }
 
@@ -96,7 +111,7 @@ public class StatusSubscriber {
                             try {
                                 JSONObject statusObj = new JSONObject(statusJson);
                                 System.out.println("\n===== 接收到家居状态数据 =====");
-                                System.out.printf("设备 %d: ID=%s, 类型=%s%n", idx+1, deviceId, deviceType);
+                                System.out.printf("设备 %d: ID=%s, 类型=%s, 时间=%s%n", idx+1, deviceId, deviceType, formattedTime);
                                 System.out.println("原始状态JSON: " + statusJson);
                                 System.out.println("解析后状态: " + statusObj.toString(4));
                             } catch (JSONException e) {

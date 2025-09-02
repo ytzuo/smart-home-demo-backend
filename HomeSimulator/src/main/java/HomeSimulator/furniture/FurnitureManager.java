@@ -273,12 +273,12 @@ public class FurnitureManager {
         try {
             // 构建与Light类一致的JSON状态（确保全局状态同步）
             JSONObject statusJson = new JSONObject();
-            statusJson.put("deviceId", lightId);
-            statusJson.put("deviceName", light.getName());
-            statusJson.put("type", light.getType());
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            String formattedTime = LocalDateTime.now().format(formatter);
-            statusJson.put("timestamp", formattedTime);
+//            statusJson.put("deviceId", lightId);
+//            statusJson.put("deviceName", light.getName());
+//            statusJson.put("type", light.getType());
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+//            String formattedTime = LocalDateTime.now().format(formatter);
+//            statusJson.put("timestamp", formattedTime);
 
             // 状态序列（与Light保持一致）
             JSONArray statusArray = new JSONArray();
@@ -302,6 +302,12 @@ public class FurnitureManager {
             aggregatedHomeStatus.deviceIds.set_at(index, lightId);
             aggregatedHomeStatus.deviceTypes.set_at(index, light.getType());
             aggregatedHomeStatus.deviceStatus.set_at(index, statusJson.toString()); // 紧凑JSON字符串
+
+            // ======== 更新全局HomeStatus的时间戳 ========
+            DateTimeFormatter timestampFormatter =
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            aggregatedHomeStatus.timeStamp =
+                    LocalDateTime.now().format(timestampFormatter);
 
             System.out.printf("[FurnitureManager] 全局状态更新: %s=%s, JSON状态=%s%n",
                     light.getName(), isOn ? "开" : "关", statusJson.toString());

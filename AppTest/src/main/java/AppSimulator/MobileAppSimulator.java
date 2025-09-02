@@ -3,7 +3,6 @@ package AppSimulator;
 import AppSimulator.DDS.CommandPublisher;
 import AppSimulator.DDS.DdsParticipant;
 import AppSimulator.DDS.StatusSubscriber;
-import IDL.Command;
 import IDL.CommandTypeSupport;
 import IDL.HomeStatusTypeSupport;
 import IDL.VehicleStatusTypeSupport;
@@ -65,18 +64,13 @@ public class MobileAppSimulator {
             String cmd = scanner.nextLine();
 
             switch (cmd) {
-                case "1":
-                    handleCarCommands(scanner);
-                    break;
-                case "2":
-                    handleHomeCommands(scanner);
-                    break;
-                case "0":
+                case "1" -> handleCarCommands(scanner);
+                case "2" -> handleHomeCommands(scanner);
+                case "0" -> {
                     System.out.println("正在退出手机App...");
                     shutdown();
-                    break;
-                default:
-                    System.out.println("无效命令，请重新输入");
+                }
+                default -> System.out.println("无效命令，请重新输入");
             }
         }
     }
