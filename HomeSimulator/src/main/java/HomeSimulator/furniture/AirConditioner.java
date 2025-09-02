@@ -112,6 +112,24 @@ public class AirConditioner implements Furniture, AlertableDevice {
         return true;
     }
 
+    public boolean isOn() { return isOn; }
+    public void setOn(boolean on) { this.isOn = on; publishStatus(); }
+    public boolean isCoolingMode() { return coolingMode; }
+    public void setCoolingMode(boolean coolingMode) { this.coolingMode = coolingMode; publishStatus(); }
+
+    public boolean isSwingMode() { return swingMode; }
+    public void setSwingMode(boolean swingMode) { this.swingMode = swingMode; publishStatus(); }
+
+    public boolean isDehumidificationMode() { return dehumidificationMode; }
+    public void setDehumidificationMode(boolean dehumidificationMode) { this.dehumidificationMode = dehumidificationMode; publishStatus(); }
+
+    public int getTemperature() { return temperature; }
+    public void setTemperature(int temperature) {
+        // 限制温度范围16-30℃
+        this.temperature = Math.max(16, Math.min(30, temperature));
+        publishStatus();
+    }
+
     @Override public void addStatusChangeListener(StatusChangeListener l) { statusChangeListeners.add(l); }
     @Override public void removeStatusChangeListener(StatusChangeListener l) { statusChangeListeners.remove(l); }
 
