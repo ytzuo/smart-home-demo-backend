@@ -1,26 +1,17 @@
-********************  2025-09-02 14:18:21:214  ********************
+********************  2025-09-02 14:53:52:046  ********************
 Current ZRDDS version(2.4.4-r2761701) for SEU was compiled at Aug 22 2025 16:10:46
 *******************************************************************
-********************  2025-09-02 14:18:36:287  ********************
-LOGINFO: LEVEL(ERROR)
-FUNC: DomainParticipantFactoryImpl.cpp:DomainParticipantFactoryDeleteParticipant(LINE: 1215)
-can not found domainId(0).
-*******************************************************************
-
-********************  2025-09-02 14:26:59:283  ********************
-Current ZRDDS version(2.4.4-r2761701) for SEU was compiled at Aug 22 2025 16:10:46
-*******************************************************************
-********************  2025-09-02 14:26:59:354  ********************
+********************  2025-09-02 14:53:52:116  ********************
 LOGINFO: LEVEL(WARNING)
 FUNC: DataWriterImpl.cpp:DataWriterQosCompatibleCheck(LINE: 8596)
-Match Reader (0189a8c0)(08090000)(00000000)(0e000004) failed: Durability incompatible in DataWriter (0189a8c0)(448b0000)(00000000)(0e000003) of Topic HomeStatus.
+Match Reader (0189a8c0)(f4200000)(00000000)(0e000004) failed: Durability incompatible in DataWriter (0189a8c0)(300f0000)(00000000)(0e000003) of Topic HomeStatus.
 *******************************************************************
-********************  2025-09-02 14:26:59:354  ********************
+********************  2025-09-02 14:53:52:116  ********************
 LOGINFO: LEVEL(ERROR)
 FUNC: ZRSedp.cpp:ZRSedpAddDiscoveredDataReader(LINE: 5371)
-local writer((0189a8c0)(448b0000)(00000000)(0e000003)) match reader((0189a8c0)(08090000)(00000000)(0e000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
+local writer((0189a8c0)(300f0000)(00000000)(0e000003)) match reader((0189a8c0)(f4200000)(00000000)(0e000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
 *******************************************************************
-********************  2025-09-02 14:32:05:571  ********************
+********************  2025-09-02 14:55:18:289  ********************
 LOGINFO: LEVEL(ERROR)
 FUNC: DomainParticipantFactoryImpl.cpp:DomainParticipantFactoryDeleteParticipant(LINE: 1215)
 can not found domainId(0).
