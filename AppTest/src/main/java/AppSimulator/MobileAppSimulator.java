@@ -88,13 +88,101 @@ public class MobileAppSimulator {
 
     private void handleHomeCommands(Scanner scanner) {
         System.out.println("--- 家居控制 ---");
-        System.out.println(" a. 开灯 (light_on)");
-        System.out.println(" b. 关灯 (light_off)");
-        System.out.println(" c. 打开空调 (ac_on)");
-        System.out.println(" d. 关闭空调 (ac_off)");
+        // 修改灯光控制为子菜单入口
+        System.out.println(" a. 灯光控制 (进入子菜单)");
+        System.out.println(" b. 空调控制 (进入子菜单)");
         System.out.print("请输入家居命令> ");
-        String action = scanner.nextLine();
-        sendCommand("home", action);
+        String input = scanner.nextLine().trim();
+
+        switch (input.toLowerCase()) {
+            case "a":
+                handleLightCommands(scanner); // 新增灯光子菜单处理
+                break;
+            case "b":
+                handleAirConditionerCommands(scanner);
+                break;
+            default:
+                System.out.println("无效命令，请重新输入");
+        }
+    }
+
+    // 新增：灯光控制子菜单处理方法
+    private void handleLightCommands(Scanner scanner) {
+        System.out.println("\n--- 灯光控制子菜单 ---");
+        System.out.println(" 1. 开关控制");
+        System.out.println(" 2. 亮度调节 (0-100)");
+        System.out.println(" 3. 色温设置");
+        System.out.println(" 4. 场景模式");
+        System.out.print("请选择操作(1-4)> ");
+        String choice = scanner.nextLine().trim();
+
+        System.out.print("请输入要控制的灯具ID (如light1): ");
+        String lightId = scanner.nextLine().trim();
+
+        switch (choice) {
+            case "1":
+                System.out.print("请选择开关状态(on/off): ");
+                String state = scanner.nextLine().trim();
+                sendCommand("light", "switch_" + lightId + "_" + state);
+                break;
+            case "2":
+                System.out.print("请输入亮度值(0-100): ");
+                String brightness = scanner.nextLine().trim();
+                sendCommand("light", "brightness_" + lightId + "_" + brightness);
+                break;
+            case "3":
+                System.out.println("可选色温: 暖白/冷白/中性/RGB");
+                System.out.print("请输入色温值: ");
+                String temp = scanner.nextLine().trim();
+                sendCommand("light", "temp_" + lightId + "_" + temp);
+                break;
+            case "4":
+                System.out.println("可选模式: 日常/阅读/睡眠/影院");
+                System.out.print("请输入场景模式: ");
+                String mode = scanner.nextLine().trim();
+                sendCommand("light", "mode_" + lightId + "_" + mode);
+                break;
+            default:
+                System.out.println("无效选项");
+        }
+    }
+    // 新增：空调子菜单处理方法
+    private void handleAirConditionerCommands(Scanner scanner) {
+        System.out.println("\n--- 空调控制子菜单 ---");
+        System.out.println(" 1. 开关控制");
+        System.out.println(" 2. 制冷模式 (设置温度)");
+        System.out.println(" 3. 扫风模式切换");
+        System.out.println(" 4. 除湿模式切换");
+        System.out.println(" 5. 温度调节");
+        System.out.print("请选择操作(1-5)> ");
+        String choice = scanner.nextLine().trim();
+
+        System.out.print("请输入要控制的空调ID (如ac1): ");
+        String acId = scanner.nextLine().trim();
+
+        switch (choice) {
+            case "1":
+                System.out.print("请选择开关状态(on/off): ");
+                String state = scanner.nextLine().trim();
+                sendCommand("ac", "switch_" + acId + "_" + state);
+                break;
+            case "2":
+                sendCommand("ac", "cool_" + acId);
+                break;
+            case "3":
+                sendCommand("ac", "swing_" + acId);
+                break;
+            case "4":
+                sendCommand("ac", "dehumidify_" + acId);
+                break;
+            case "5":
+                System.out.print("请输入温度 (16-30)> ");
+                String temp = scanner.nextLine().trim();
+                sendCommand("ac", "temp_" + acId + "_" + temp);
+                break;
+            default:
+                System.out.println("无效选项");
+        }
     }
 
     private void sendCommand(String target, String action) {

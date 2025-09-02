@@ -82,15 +82,15 @@ public class FurnitureManager {
         Light livingRoomLight = new Light("light1", "客厅灯", homeStatusDataWriter, this);
         Light bedroomLight = new Light("light2", "卧室灯", homeStatusDataWriter, this);
 
-//        // 初始化空调（其他家具类型类似）
-//        AirConditioner livingRoomAC = new AirConditioner("ac1", "客厅空调", homeStatusDataWriter, this);
-//        AirConditioner bedroomAC = new AirConditioner("ac2", "卧室空调", homeStatusDataWriter, this);
+        // 初始化空调（其他家具类型类似）
+       AirConditioner livingRoomAC = new AirConditioner("ac1", "客厅空调", homeStatusDataWriter, this);
+       AirConditioner bedroomAC = new AirConditioner("ac2", "卧室空调", homeStatusDataWriter, this);
 
         // 注册家具
         registerFurniture(livingRoomLight);
         registerFurniture(bedroomLight);
-//        registerFurniture(livingRoomAC);
-//        registerFurniture(bedroomAC);
+       registerFurniture(livingRoomAC);
+        registerFurniture(bedroomAC);
 
         System.out.println("[FurnitureManager] 默认家具初始化完成（共" + furnitureMap.size() + "个）");
     }
