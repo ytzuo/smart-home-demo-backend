@@ -81,9 +81,40 @@ public class MobileAppSimulator {
         System.out.println(" b. 关闭发动机 (engine_off)");
         System.out.println(" c. 锁车 (lock)");
         System.out.println(" d. 解锁 (unlock)");
+        System.out.println(" r. (refuel)");
+        System.out.println(" ac-on.  (ac_on)");
+        System.out.println(" ac-off. (ac_off)");
         System.out.print("请输入车辆命令> ");
         String action = scanner.nextLine();
-        sendCommand("car", action);
+        //sendCommand("car", action);
+        switch (action.toLowerCase()) {
+            case "a":
+                sendCommand("car", "engine_on");
+                break;
+            case "b":
+                sendCommand("car", "engine_off");
+                break;
+            case "c":
+                sendCommand("car", "lock");
+                break;
+            case "d":
+                sendCommand("car", "unlock");
+                break;
+            case "r":
+                sendCommand("car", "refuel");
+                break;
+            case "ac-on":
+                sendCommand("car", "ac_on");
+                break;
+            case "ac-off":
+                sendCommand("car", "ac_off");
+                break;
+            case "e":
+                System.out.println("正在刷新车辆状态...");
+                break;  // 状态会通过DDS自动更新
+            default:
+                System.out.println("无效命令");
+        }
     }
 
     private void handleHomeCommands(Scanner scanner) {

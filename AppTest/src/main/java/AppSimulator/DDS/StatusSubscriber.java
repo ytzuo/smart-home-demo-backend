@@ -157,8 +157,9 @@ public class StatusSubscriber {
                 if (infoSeq.get_at(i).valid_data) {
                     VehicleStatus data = dataSeq.get_at(i);
                     // 打印接收到的Vehicle状态，使用IDL中定义的字段
-                    System.out.printf("接收到Vehicle状态: EngineOn=%b, DoorsLocked=%b, Fuel=%f%%%n", 
-                                      data.engineOn, data.doorsLocked, data.fuelPercent);
+                    System.out.printf("已接收车辆状态: EngineOn=%b, DoorsLocked=%b, Fuel=%.1f%%, ACOn=%b, Location=%s, Time=%s%n",
+                            data.engineOn, data.doorsLocked, data.fuelPercent,
+                            data.acOn, data.location, data.timeStamp);
                 }
             }
 
