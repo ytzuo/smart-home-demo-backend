@@ -2,13 +2,17 @@ package HomeSimulator;
 
 import HomeSimulator.DDS.DdsParticipant;
 import HomeSimulator.DDS.CommandSubscriber;
+import HomeSimulator.furniture.Furniture;
 import HomeSimulator.furniture.FurnitureManager;
 import IDL.Command;
 import IDL.CommandTypeSupport;
 import IDL.HomeStatusTypeSupport;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
+
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import HomeSimulator.HomeSimulatorAlert.AlertType;
 
 /**
  * HomeSimulator主控制器
@@ -20,6 +24,7 @@ public class HomeSimulator {
     private DdsParticipant ddsParticipant;
     private CommandSubscriber commandSubscriber;
     private FurnitureManager furnitureManager; // 家具管理器（需DDS资源初始化）
+    private HomeSimulatorAlert alertSystem; // 报警系统
     private AtomicBoolean running;
 
     public HomeSimulator() {
@@ -51,6 +56,9 @@ public class HomeSimulator {
 
         // 2. 初始化家具管理器（传入DDS资源）
         furnitureManager.start();
+        
+        // 3. 启动报警系统
+        alertSystem.start();
 
         System.out.println("[HomeSimulator] 家居模拟器启动完成");
 
@@ -83,6 +91,9 @@ public class HomeSimulator {
         // 3. 创建家具管理器（传入DDS发布器和HomeStatus主题）
         Publisher ddsPublisher = ddsParticipant.getPublisher();
         furnitureManager = new FurnitureManager(ddsPublisher, homeStatusTopic);
+        
+        // 4. 创建报警系统
+        alertSystem = new HomeSimulatorAlert(ddsPublisher, homeStatusTopic);
 
         System.out.println("[HomeSimulator] DDS初始化完成");
     }
@@ -135,8 +146,35 @@ public class HomeSimulator {
             case "ac_off":
                 turnOffAllAirConditioners();
                 break;
+            // 添加报警相关命令处理
+            case "alert_test":
+                testDeviceAlert();
+                break;
+            case "alert_clear":
+                if (alertSystem != null) {
+                    alertSystem.clearAlert();
+                }
+                break;
             default:
                 System.err.println("[HomeSimulator] 未知的家居命令: " + action);
+        }
+    }
+    
+    /**
+     * 测试设备报警功能
+     * 模拟触发一个灯具异常报警
+     */
+    private void testDeviceAlert() {
+        if (alertSystem != null) {
+            List<Furniture> lights = furnitureManager.getFurnitureByType("light");
+            if (!lights.isEmpty()) {
+                Furniture light = lights.get(0);
+                alertSystem.triggerAlert(
+                    HomeSimulatorAlert.AlertType.LIGHT_ABNORMAL,
+                    String.format("灯具 %s 测试报警", light.getName())
+                );
+                System.out.println("[HomeSimulator] 触发测试报警");
+            }
         }
     }
 
@@ -240,6 +278,11 @@ public class HomeSimulator {
         // 停止家具管理器
         if (furnitureManager != null) {
             furnitureManager.stop();
+        }
+        
+        // 停止报警系统
+        if (alertSystem != null) {
+            alertSystem.stop();
         }
 
         // 停止DDS订阅者
