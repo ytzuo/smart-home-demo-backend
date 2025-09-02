@@ -9,7 +9,7 @@ import IDL.HomeStatusTypeSupport;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
 import java.util.concurrent.atomic.AtomicBoolean;
-
+import HomeSimulator.furniture.Light;
 /**
  * HomeSimulator主控制器
  * 协调DDS通信、家具管理和状态上报等各模块工作
@@ -141,18 +141,77 @@ public class HomeSimulator {
     }
 
     private void handleLightCommand(String action) {
-        switch (action.toLowerCase()) {
-            case "light_on":
-            case "on":
-                turnOnAllLights();
+        String[] parts = action.split("_");
+        if (parts.length < 3) {
+            System.err.println("[HomeSimulator] 灯光命令格式错误: " + action);
+            return;
+        }
+        String operation = parts[0];
+        String lightId = parts[1];
+        String param = parts[2];
+
+        // 获取目标灯具
+        Light targetLight = (Light) furnitureManager
+                .getFurnitureByType("light").stream()
+                .filter(light -> lightId.equals(light.getId()))
+                .findFirst()
+                .orElse(null);
+
+        if (targetLight == null) {
+            System.err.println("[HomeSimulator] 未找到灯具: " + lightId);
+            return;
+        }
+
+        switch (operation.toLowerCase()) {
+            case "switch":
+                // 复用现有开关方法
+                if ("on".equals(param)) {
+                    turnOnLight(lightId);
+                } else if ("off".equals(param)) {
+                    turnOffLight(lightId);
+                }
                 break;
-            case "light_off":
-            case "off":
-                turnOffAllLights();
+            case "brightness":
+                try {
+                    int brightness = Integer.parseInt(param);
+                    targetLight.setBrightness(brightness);
+                    targetLight.publishStatus();
+                } catch (NumberFormatException e) {
+                    System.err.println("[HomeSimulator] 亮度值格式错误: " + param);
+                }
+                break;
+            case "temp":
+                targetLight.setColorTemp(param);
+                targetLight.publishStatus();
+                break;
+            case "mode":
+                targetLight.setSceneMode(param);
+                targetLight.publishStatus();
                 break;
             default:
-                System.err.println("[HomeSimulator] 未知的灯光命令: " + action);
+                System.err.println("[HomeSimulator] 未知的灯光操作: " + operation);
         }
+    }
+
+    // 添加单个灯具控制方法
+    private void turnOnLight(String id) {
+        furnitureManager.getFurnitureByType("light").stream()
+                .filter(light -> id.equals(light.getId()))
+                .findFirst()
+                .ifPresent(light -> {
+                    light.setStatus("on");
+                    System.out.println("[HomeSimulator] 已开启灯具: " + id);
+                });
+    }
+
+    private void turnOffLight(String id) {
+        furnitureManager.getFurnitureByType("light").stream()
+                .filter(light -> id.equals(light.getId()))
+                .findFirst()
+                .ifPresent(light -> {
+                    light.setStatus("off");
+                    System.out.println("[HomeSimulator] 已关闭灯具: " + id);
+                });
     }
 
     private void handleAirConditionerCommand(String action) {
