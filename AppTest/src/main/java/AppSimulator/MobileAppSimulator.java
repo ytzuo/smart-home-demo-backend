@@ -15,6 +15,7 @@ public class MobileAppSimulator {
 
     private CommandPublisher commandPublisher;
     private AlertSubscriber alertSubscriber;
+    private AlertSubscriber carAlertSubscriber;
     private final AtomicBoolean running;
 
     public MobileAppSimulator() {
@@ -45,13 +46,22 @@ public class MobileAppSimulator {
         StatusSubscriber statusSubscriber = new StatusSubscriber();
         statusSubscriber.start(participant.getSubscriber(), homeStatusTopic, vehicleStatusTopic,presenceTopic);
 
-        // 初始化报警订阅器
+        // 初始化家居报警订阅器
         Topic alertTopic = participant.createTopic("Alert", AlertTypeSupport.get_instance());
         alertSubscriber = new AlertSubscriber();
         if (alertSubscriber.start(participant.getSubscriber(), alertTopic)) {
-            System.out.println("报警监听已启动");
+            System.out.println("家居报警监听已启动");
         } else {
-            System.err.println("报警监听初始化失败");
+            System.err.println("家居报警监听初始化失败");
+        }
+        
+        // 初始化车辆报警订阅器
+        Topic carAlertTopic = participant.createTopic("CarAlert", AlertTypeSupport.get_instance());
+        carAlertSubscriber = new AlertSubscriber();
+        if (carAlertSubscriber.start(participant.getSubscriber(), carAlertTopic)) {
+            System.out.println("车辆报警监听已启动");
+        } else {
+            System.err.println("车辆报警监听初始化失败");
         }
 
         System.out.println("DDS 初始化完成");

@@ -21,6 +21,7 @@ public class CarSimulator {
     private DdsParticipant ddsParticipant;
     private AtomicBoolean running; // 控制运行状态
     private ScheduledExecutorService statusReporter; // 定时状态上报
+    private CarSimulatorAlert alertSystem; // 车辆报警系统
 
     // 车辆状态
     private boolean engineOn = false;
@@ -36,6 +37,7 @@ public class CarSimulator {
     public CarSimulator() {
         loadLibrary();
         running = new AtomicBoolean(false);
+        alertSystem = new CarSimulatorAlert();
     }
 
     private void loadLibrary() {
@@ -58,6 +60,7 @@ public class CarSimulator {
         running.set(true);
         initDDS();
         //startStatusReporting();
+        startConsoleInteraction();
         keepRunning(); // 阻塞主线程
     }
 
@@ -79,6 +82,10 @@ public class CarSimulator {
 
         statusPublisher = new StatusPublisher();
         statusPublisher.start(ddsParticipant.getPublisher(), vehicleStatusTopic);
+
+        // 初始化报警系统
+        alertSystem.initialize(ddsParticipant, this);
+        alertSystem.startMonitoring();
 
         // 初始状态上报
         reportCurrentStatus();
@@ -246,6 +253,37 @@ public class CarSimulator {
             System.err.println("[CarSimulator] 上报状态时发生错误: " + e.getMessage());
         }
     }
+    private void startConsoleInteraction() {
+        Thread consoleThread = new Thread(() -> {
+            java.util.Scanner scanner = new java.util.Scanner(System.in);
+            while (running.get()) {
+                System.out.println("请输入命令 (lf: low_fuel, eo: engine_overheat, du: door_unlocked, exit): ");
+                String input = scanner.nextLine().trim();
+
+                switch (input.toLowerCase()) {
+                    case "lf":
+                        alertSystem.triggerAlert(CarSimulatorAlert.CarAlertType.LOW_FUEL, "LOW");
+                        break;
+                    case "eo":
+                        alertSystem.triggerAlert(CarSimulatorAlert.CarAlertType.ENGINE_OVERHEAT, "HIGH");
+                        break;
+                    case "du":
+                        alertSystem.triggerAlert(CarSimulatorAlert.CarAlertType.DOOR_UNLOCKED, "MEDIUM");
+                        break;
+                    case "exit":
+                        System.out.println("正在退出...");
+                        shutdown();
+                        break;
+                    default:
+                        System.out.println("未知命令: " + input + ". 可用命令: lf, eo, du, exit");
+                }
+            }
+            scanner.close();
+        });
+        consoleThread.setDaemon(true);
+        consoleThread.start();
+    }
+
     private void keepRunning() {
         // 添加关闭钩子
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -272,9 +310,22 @@ public class CarSimulator {
         System.out.println("[CarSimulator] 正在关闭车辆模拟器...");
         running.set(false);
 
+        // 停止报警系统
+        if (alertSystem != null) {
+            alertSystem.close();
+        }
+
         // 停止状态上报
         if (statusReporter != null) {
             statusReporter.shutdown();
+            try {
+                if (!statusReporter.awaitTermination(5, TimeUnit.SECONDS)) {
+                    statusReporter.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                statusReporter.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
 
         // 停止订阅者
@@ -290,6 +341,12 @@ public class CarSimulator {
         System.out.println("[CarSimulator] 车辆模拟器已关闭");
     }
 
+
+    public boolean isEngineOn() { return engineOn; }
+    public boolean isDoorsLocked() { return doorsLocked; }
+    public boolean isAcOn() { return acOn; }
+    public float getFuelPercent() { return fuelPercent; }
+    public String getLocation() { return location; }
 
     public static void main(String[] args) {
         System.out.println("[CarSimulator] 启动车辆模拟器...");

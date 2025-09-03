@@ -109,6 +109,38 @@ public class AlertSubscriber {
         @Override
         public void on_data_arrived(DataReader dr, Object o, SampleInfo si) {}
 
+        // 定义CarAlertType枚举，用于匹配报警ID
+        private enum CarAlertType {
+            LOW_FUEL(1, "燃油不足"),
+            ENGINE_OVERHEAT(2, "发动机过热"),
+            DOOR_UNLOCKED(3, "车门未锁");
+
+            private final int alertId;
+            private final String description;
+
+            CarAlertType(int alertId, String description) {
+                this.alertId = alertId;
+                this.description = description;
+            }
+
+            public int getAlertId() {
+                return alertId;
+            }
+
+            public String getDescription() {
+                return description;
+            }
+
+            public static String getDescriptionById(int alertId) {
+                for (CarAlertType type : CarAlertType.values()) {
+                    if (type.getAlertId() == alertId) {
+                        return type.getDescription();
+                    }
+                }
+                return "未知车辆报警";
+            }
+        }
+
         /**
          * 处理单个报警消息
          */
@@ -118,7 +150,11 @@ public class AlertSubscriber {
             System.out.println("  设备类型: " + alert.deviceType);
             System.out.println("  报警ID: " + alert.alert_id);
             System.out.println("  报警级别: " + alert.level);
-            System.out.println("  描述: " + alert.description);
+            String detailedDescription = alert.description;
+            if ("car".equals(alert.deviceType)) {
+                detailedDescription = CarAlertType.getDescriptionById(alert.alert_id);
+            }
+            System.out.println("  描述: " + detailedDescription);
             System.out.println("  时间戳: " + alert.timeStamp);
         }
     }
