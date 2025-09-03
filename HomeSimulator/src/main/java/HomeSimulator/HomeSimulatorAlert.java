@@ -1,6 +1,5 @@
 package HomeSimulator;
 
-import HomeSimulator.DDS.DdsParticipant;
 import HomeSimulator.furniture.*;
 import com.zrdds.infrastructure.InstanceHandle_t;
 import com.zrdds.infrastructure.ReturnCode_t;
@@ -478,6 +477,9 @@ public class HomeSimulatorAlert {
         // 触发系统报警
         triggerAlert(systemAlertType, alertMessage);
         
+        // 直接发布Alert消息到手机端，使用正确的设备ID和类型
+        publishDeviceAlertMessage(deviceId, deviceType, systemAlertType, alertMessage, true);
+        
         System.out.printf("[HomeSimulatorAlert] 收到设备报警: ID=%s, 类型=%s, 消息=%s%n", 
                 deviceId, alertType, alertMessage);
     }
@@ -671,7 +673,7 @@ public class HomeSimulatorAlert {
         
         if ("light".equals(statusRecord.type)) {
             alertType = AlertType.LIGHT_ABNORMAL;
-            message = String.format("灯具 %s 工作异常，可能存在过热或电路问题", device.getName());
+            message = String.format("灯具 %s 状态异常，可能存在电路问题", device.getName());
         } 
         else if ("ac".equals(statusRecord.type)) {
             alertType = AlertType.AC_ABNORMAL;
@@ -685,8 +687,8 @@ public class HomeSimulatorAlert {
         // 触发报警
         triggerAlert(alertType, message);
         
-        // 发布Alert消息到手机端
-        publishAlertMessage(alertType, message, true);
+        // 直接发布Alert消息到手机端，使用正确的设备ID和类型
+        publishDeviceAlertMessage(device.getId(), statusRecord.type, alertType, message, true);
         
         System.out.printf("[HomeSimulatorAlert] 设备报警: ID=%s, 类型=%s, 消息=%s%n", 
                 device.getId(), statusRecord.type, message);
