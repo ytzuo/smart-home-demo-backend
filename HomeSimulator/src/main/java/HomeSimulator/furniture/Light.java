@@ -113,6 +113,10 @@ public class Light implements Furniture, AlertableDevice {
         statusChangeListeners.remove(listener);
     }
 
+    public boolean isOn() {
+        return isOn;
+    }
+
     // ======== 预设状态的getter/setter（供外部修改） ========
     public int getBrightness() { return brightness; }
     public void setBrightness(int brightness) { this.brightness = Math.max(0, Math.min(100, brightness)); } // 限制0-100
@@ -270,7 +274,7 @@ public class Light implements Furniture, AlertableDevice {
             ReturnCode_t result = ddsWriter.write(status, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (result == ReturnCode_t.RETCODE_OK) {
                 System.out.printf("[Light] %s状态上报: %s%n", getName(), statusJson.toString());
-                manager.updateLightStatus(getId(), isOn); // 同步更新全局状态
+                manager.updateDeviceStatus(getId()); // 同步更新全局状态
             } else {
                 System.err.printf("[Light] 上报失败，返回码: %s%n", result);
             }

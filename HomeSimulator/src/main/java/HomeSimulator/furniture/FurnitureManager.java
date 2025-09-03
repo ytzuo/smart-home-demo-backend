@@ -150,6 +150,7 @@ public class FurnitureManager {
         scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if (running.get()) {
                 checkAllFurnitureStatus();
+                publishGlobalHomeStatus(); // 新增：定时上报全局状态
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
@@ -184,7 +185,80 @@ public class FurnitureManager {
                 System.out.printf("[FurnitureManager] 家具状态变更: %s(%s) 从 %s → %s%n",
                         furniture.getName(), id, oldStatus, newStatus));
 
+        // 初始化全局状态数组（确保aggregatedHomeStatus包含所有设备）
+        initializeGlobalStatusArrays();
+
         System.out.printf("[FurnitureManager] 注册家具: %s(%s)%n", furniture.getName(), furniture.getType());
+    }
+
+    /**
+     * 初始化全局状态数组（确保所有设备都包含在aggregatedHomeStatus中）
+     */
+    private void initializeGlobalStatusArrays() {
+        int totalDevices = furnitureMap.size();
+        if (totalDevices == 0) {
+            return;
+        }
+
+        try {
+            // 确保数组长度足够容纳所有设备
+            aggregatedHomeStatus.deviceIds.ensure_length(totalDevices, totalDevices);
+            aggregatedHomeStatus.deviceTypes.ensure_length(totalDevices, totalDevices);
+            aggregatedHomeStatus.deviceStatus.ensure_length(totalDevices, totalDevices);
+
+            // 重新填充所有设备信息
+            int index = 0;
+            for (Furniture furniture : furnitureMap.values()) {
+                aggregatedHomeStatus.deviceIds.set_at(index, furniture.getId());
+                aggregatedHomeStatus.deviceTypes.set_at(index, furniture.getType());
+                
+                // 根据设备类型生成对应的JSON状态
+                String jsonStatus = generateDeviceJsonStatus(furniture);
+                aggregatedHomeStatus.deviceStatus.set_at(index, jsonStatus);
+                
+                index++;
+            }
+
+            System.out.println("[FurnitureManager] 全局状态数组初始化完成，共 " + totalDevices + " 个设备");
+        } catch (Exception e) {
+            System.err.println("[FurnitureManager] 初始化全局状态数组异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 根据设备类型生成对应的JSON状态
+     */
+    private String generateDeviceJsonStatus(Furniture furniture) {
+        try {
+            JSONObject statusJson = new JSONObject();
+            JSONArray statusArray = new JSONArray();
+            JSONArray paramsArray = new JSONArray();
+
+            if (furniture instanceof Light) {
+                Light light = (Light) furniture;
+                statusArray.put(light.isOn() ? 1 : 0);
+                statusArray.put(light.getColorTempCode());
+                statusArray.put(light.getSceneModeCode());
+                
+                paramsArray.put((float) light.getBrightness());
+                paramsArray.put(light.getColorTempValue());
+            } else if (furniture instanceof AirConditioner) {
+                AirConditioner ac = (AirConditioner) furniture;
+                statusArray.put(ac.isOn() ? 1 : 0);
+                statusArray.put(ac.getModeCode());
+                statusArray.put(ac.getSwingModeCode());
+                statusArray.put(ac.getDehumidifyModeCode());
+                
+                paramsArray.put((float) ac.getTemperature());
+            }
+
+            statusJson.put("status", statusArray);
+            statusJson.put("params", paramsArray);
+            return statusJson.toString();
+        } catch (Exception e) {
+            System.err.println("[FurnitureManager] 生成设备JSON状态异常: " + e.getMessage());
+            return "{}";
+        }
     }
 
     /**
@@ -266,66 +340,54 @@ public class FurnitureManager {
     }
 
     /**
-     * 更新灯具状态到全局HomeStatus（同步Light上报的JSON状态）
+     * 更新设备状态到全局HomeStatus（同步所有设备类型的JSON状态）
      */
-    public synchronized void updateLightStatus(String lightId, boolean isOn) {
-        Furniture furniture = getFurniture(lightId);
-        if (furniture == null || !(furniture instanceof Light)) {
-            System.err.println("[FurnitureManager] 未找到灯具或类型错误: " + lightId);
-            return;
-        }
-        Light light = (Light) furniture;
-
-        int index = light.getLightIndex(); // 获取灯具索引
-        if (index < 0) {
-            System.err.println("[FurnitureManager] 灯具索引无效: " + lightId);
+    public synchronized void updateDeviceStatus(String deviceId) {
+        Furniture furniture = getFurniture(deviceId);
+        if (furniture == null) {
+            System.err.println("[FurnitureManager] 未找到设备: " + deviceId);
             return;
         }
 
         try {
-            // 构建与Light类一致的JSON状态（确保全局状态同步）
-            JSONObject statusJson = new JSONObject();
-//            statusJson.put("deviceId", lightId);
-//            statusJson.put("deviceName", light.getName());
-//            statusJson.put("type", light.getType());
-//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-//            String formattedTime = LocalDateTime.now().format(formatter);
-//            statusJson.put("timestamp", formattedTime);
-
-            // 状态序列（与Light保持一致）
-            JSONArray statusArray = new JSONArray();
-            statusArray.put(isOn ? 1 : 0);
-            statusArray.put(light.getColorTempCode());
-            statusArray.put(light.getSceneModeCode());
-            statusJson.put("status", statusArray);
-
-            // 参数序列（与Light保持一致）
-            JSONArray paramsArray = new JSONArray();
-            paramsArray.put((float) light.getBrightness());
-            paramsArray.put(light.getColorTempValue());
-            statusJson.put("params", paramsArray);
-
-            // 更新全局aggregatedHomeStatus的deviceStatus/deviceIds/deviceTypes
-            if (aggregatedHomeStatus.deviceIds.length() <= index) {
-                aggregatedHomeStatus.deviceIds.ensure_length(index + 1, index + 1);
-                aggregatedHomeStatus.deviceTypes.ensure_length(index + 1, index + 1);
-                aggregatedHomeStatus.deviceStatus.ensure_length(index + 1, index + 1);
+            // 查找设备索引
+            int index = -1;
+            for (int i = 0; i < aggregatedHomeStatus.deviceIds.length(); i++) {
+                if (deviceId.equals(aggregatedHomeStatus.deviceIds.get_at(i))) {
+                    index = i;
+                    break;
+                }
             }
-            aggregatedHomeStatus.deviceIds.set_at(index, lightId);
-            aggregatedHomeStatus.deviceTypes.set_at(index, light.getType());
-            aggregatedHomeStatus.deviceStatus.set_at(index, statusJson.toString()); // 紧凑JSON字符串
 
-            // ======== 更新全局HomeStatus的时间戳 ========
+            if (index < 0) {
+                // 如果设备不在全局状态中，重新初始化
+                initializeGlobalStatusArrays();
+                return;
+            }
+
+            // 根据设备类型生成对应的JSON状态
+            String jsonStatus = generateDeviceJsonStatus(furniture);
+            aggregatedHomeStatus.deviceStatus.set_at(index, jsonStatus);
+
+            // 更新全局HomeStatus的时间戳
             DateTimeFormatter timestampFormatter =
                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             aggregatedHomeStatus.timeStamp =
                     LocalDateTime.now().format(timestampFormatter);
 
-            System.out.printf("[FurnitureManager] 全局状态更新: %s=%s, JSON状态=%s%n",
-                    light.getName(), isOn ? "开" : "关", statusJson.toString());
+            System.out.printf("[FurnitureManager] 全局状态更新: %s=%s%n",
+                    furniture.getName(), furniture.getStatus());
         } catch (Exception e) {
-            System.err.println("[FurnitureManager] 更新灯具JSON状态异常: " + e.getMessage());
+            System.err.println("[FurnitureManager] 更新设备JSON状态异常: " + e.getMessage());
         }
+    }
+
+    /**
+     * 更新灯具状态到全局HomeStatus（已废弃，使用updateDeviceStatus替代）
+     */
+    @Deprecated
+    public synchronized void updateLightStatus(String lightId, boolean isOn) {
+        updateDeviceStatus(lightId);
     }
 
     /**
@@ -359,5 +421,35 @@ public class FurnitureManager {
      */
     public HomeStatus getAggregatedHomeStatus() {
         return aggregatedHomeStatus; // 返回当前汇总状态（深拷贝可选，视需求而定）
+    }
+
+    /**
+     * 发布全局HomeStatus到DDS（定时上报所有家具状态）
+     */
+    private void publishGlobalHomeStatus() {
+        if (homeStatusDataWriter == null || !running.get()) {
+            return;
+        }
+
+        try {
+            // 更新时间戳
+            DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            aggregatedHomeStatus.timeStamp = LocalDateTime.now().format(timestampFormatter);
+
+            // 发布全局状态
+            ReturnCode_t result = homeStatusDataWriter.write(
+                aggregatedHomeStatus, 
+                InstanceHandle_t.HANDLE_NIL_NATIVE
+            );
+            
+            if (result == ReturnCode_t.RETCODE_OK) {
+                System.out.println("[FurnitureManager] 全局状态定时上报成功 - " + 
+                    aggregatedHomeStatus.deviceIds.length() + " 个设备");
+            } else {
+                System.err.println("[FurnitureManager] 全局状态定时上报失败，返回码: " + result);
+            }
+        } catch (Exception e) {
+            System.err.println("[FurnitureManager] 全局状态定时上报异常: " + e.getMessage());
+        }
     }
 }

@@ -21,10 +21,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class AirConditioner implements Furniture, AlertableDevice {
     // ======== 枚举：运行模式 ========
     public enum Mode {
-        OFF("off"), COOL("cool"), HEAT("heat"), FAN("fan"), AUTO("auto");
+        OFF("off", 0), COOL("cool", 1), HEAT("heat", 2), FAN("fan", 3), AUTO("auto", 4);
         private final String value;
-        Mode(String value) { this.value = value; }
+        private final int code;
+        Mode(String value, int code) {
+            this.value = value;
+            this.code = code;
+        }
         public String getValue() { return value; }
+        public int getCode() { return code; }
         public static Mode fromString(String mode) {
             for (Mode m : Mode.values()) {
                 if (m.value.equalsIgnoreCase(mode)) return m;
@@ -133,6 +138,19 @@ public class AirConditioner implements Furniture, AlertableDevice {
     public boolean isDehumidificationMode() { return dehumidificationMode; }
     public void setDehumidificationMode(boolean dehumidificationMode) { this.dehumidificationMode = dehumidificationMode; publishStatus(); }
 
+    public int getModeCode() {
+        return currentMode.getCode();
+    }
+
+    public int getSwingModeCode() {
+        return swingMode ? 1 : 0;
+    }
+
+    public int getDehumidifyModeCode() {
+        return dehumidificationMode ? 1 : 0;
+    }
+
+
     public int getTemperature() { return temperature; }
     public void setTemperature(int temperature) {
         // 限制温度范围16-30℃
@@ -181,6 +199,9 @@ public class AirConditioner implements Furniture, AlertableDevice {
             ReturnCode_t result = ddsWriter.write(status, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (result == ReturnCode_t.RETCODE_OK) {
                 System.out.printf("[AirConditioner] %s状态上报: %s%n", getName(), statusJson.toString());
+                if (manager != null) {
+                    manager.updateDeviceStatus(getId()); // 同步更新全局状态
+                }
             } else {
                 System.err.printf("[AirConditioner] 上报失败，返回码: %s%n", result);
             }

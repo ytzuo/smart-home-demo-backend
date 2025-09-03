@@ -560,6 +560,7 @@ public class HomeSimulator {
         System.out.println("[HomeSimulator] 正在关闭家居模拟器...");
         running.set(false);
 
+        // 关闭家具管理器（包含定时上报任务）
         if (furnitureManager != null) {
             furnitureManager.stop();
         }
