@@ -108,9 +108,10 @@ public class CarSimulator {
             // 仅处理car类型的命令
             if ("car".equalsIgnoreCase(deviceType)) {
                 handleCarCommand(action);
-            } else {
-                System.err.println("[CarSimulator] 未知的设备类型: " + deviceType);
             }
+//            else {
+//                System.err.println("[CarSimulator] 未知的设备类型: " + deviceType);
+//            }
 
 
             //上报状态的函数，暂时不用

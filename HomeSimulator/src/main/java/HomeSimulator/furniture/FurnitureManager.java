@@ -445,6 +445,15 @@ public class FurnitureManager {
             if (result == ReturnCode_t.RETCODE_OK) {
                 System.out.println("[FurnitureManager] 全局状态定时上报成功 - " + 
                     aggregatedHomeStatus.deviceIds.length() + " 个设备");
+                // 输出所有设备状态详情
+                System.out.println("[FurnitureManager] 设备状态详情:");
+                for (int i = 0; i < aggregatedHomeStatus.deviceIds.length(); i++) {
+                    String deviceId = aggregatedHomeStatus.deviceIds.get_at(i);
+                    String deviceType = aggregatedHomeStatus.deviceTypes.get_at(i);
+                    String deviceStatus = aggregatedHomeStatus.deviceStatus.get_at(i);
+                    System.out.printf("[FurnitureManager]   设备ID: %s, 类型: %s, 状态: %s%n",
+                            deviceId, deviceType, deviceStatus);
+                }
             } else {
                 System.err.println("[FurnitureManager] 全局状态定时上报失败，返回码: " + result);
             }
