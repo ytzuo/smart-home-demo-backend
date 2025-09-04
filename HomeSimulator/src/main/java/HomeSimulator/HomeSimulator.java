@@ -427,8 +427,6 @@ public class HomeSimulator {
             System.out.println("  lh1 - 触发light1过热报警");
             System.out.println("  at1 - 触发ac1温度异常报警");
             System.out.println("  ap1 - 触发ac1性能异常报警");
-            System.out.println("  r1  - 重置light1报警");
-            System.out.println("  r2  - 重置ac1报警");
             System.out.println("  q   - 退出程序");
             System.out.println("====================");
 
@@ -448,12 +446,6 @@ public class HomeSimulator {
                         break;
                     case "ap1":
                         triggerAirConditionerAlert("ac1", "performance");
-                        break;
-                    case "r1":
-                        resetDeviceAlert("light1");
-                        break;
-                    case "r2":
-                        resetDeviceAlert("ac1");
                         break;
                     case "q":
                         System.out.println("正在退出...");
