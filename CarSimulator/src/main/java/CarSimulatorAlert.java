@@ -12,6 +12,8 @@ import java.util.Date;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.HashSet;
+import java.util.Set;
 
 public class CarSimulatorAlert {
     private static final String ALERT_TOPIC = "CarAlert";
@@ -21,6 +23,7 @@ public class CarSimulatorAlert {
     private Alert alert;
     private boolean isRunning = false;
     private ScheduledExecutorService alertChecker;
+    private Set<CarAlertType> activeAlerts;
     
     // 车辆状态监控
     private CarSimulator carSimulator;
@@ -49,6 +52,7 @@ public class CarSimulatorAlert {
     
     public CarSimulatorAlert() {
         this.alert = new Alert();
+        this.activeAlerts = new HashSet<>();
     }
     
     public void initialize(DdsParticipant ddsParticipant, CarSimulator carSimulator) {
@@ -131,24 +135,35 @@ public class CarSimulatorAlert {
         if (carSimulator.getFuelPercent() < 20.0f) {
             triggerAlert(CarAlertType.LOW_FUEL, 
                 String.format("燃油不足，当前油量：%.1f%%", carSimulator.getFuelPercent()));
+        } else {
+            clearAlert(CarAlertType.LOW_FUEL.getAlertId());
         }
         
         // 检查车门未锁
         if (!carSimulator.isDoorsLocked() && carSimulator.isEngineOn()) {
             triggerAlert(CarAlertType.DOOR_UNLOCKED, 
                 "车门未锁，请检查所有车门");
+        } else {
+            clearAlert(CarAlertType.DOOR_UNLOCKED.getAlertId());
         }
         
         // 检查发动机过热（模拟）
         if (carSimulator.isEngineOn() && Math.random() < 0.01) {
             triggerAlert(CarAlertType.ENGINE_OVERHEAT, 
                 "发动机过热，请立即停车检查");
+        } else {
+            clearAlert(CarAlertType.ENGINE_OVERHEAT.getAlertId());
         }
     }
     
     public void triggerAlert(CarAlertType alertType, String message) {
         if (alertWriter == null) {
             System.err.println("[CarSimulatorAlert] AlertDataWriter未初始化");
+            return;
+        }
+
+        if (activeAlerts.contains(alertType)) {
+            // 报警已存在，不重复发送
             return;
         }
         
@@ -163,6 +178,7 @@ public class CarSimulatorAlert {
             
             // 发布报警
             alertWriter.write(alert, InstanceHandle_t.HANDLE_NIL_NATIVE);
+            activeAlerts.add(alertType); // 添加到活动报警列表
             
             System.out.printf("[CarSimulatorAlert] 报警已发送: %s - %s%n", 
                 alertType.getDescription(), message);
@@ -176,21 +192,31 @@ public class CarSimulatorAlert {
         if (alertWriter == null) {
             return;
         }
-        
-        try {
-            alert.deviceId = "car_001";
-            alert.deviceType = "car";
-            alert.alert_id = alertId;
-            alert.level = "INFO"; // 清除报警
-            alert.description = "报警已清除";
-            alert.timeStamp = getCurrentTimeStamp();
-            
-            alertWriter.write(alert, InstanceHandle_t.HANDLE_NIL_NATIVE);
-            
-            System.out.printf("[CarSimulatorAlert] 报警已清除: %d%n", alertId);
-            
-        } catch (Exception e) {
-            System.err.println("[CarSimulatorAlert] 清除报警失败: " + e.getMessage());
+
+        CarAlertType typeToClear = null;
+        for (CarAlertType type : CarAlertType.values()) {
+            if (type.getAlertId() == alertId) {
+                typeToClear = type;
+                break;
+            }
+        }
+
+        if (typeToClear != null && activeAlerts.contains(typeToClear)) {
+            try {
+                alert.deviceId = "car_001";
+                alert.deviceType = "car";
+                alert.alert_id = alertId;
+                alert.level = "INFO"; // 清除报警
+                alert.description = "报警已清除";
+                alert.timeStamp = getCurrentTimeStamp();
+
+                activeAlerts.remove(typeToClear); // 从活动报警列表移除
+                
+                System.out.printf("[CarSimulatorAlert] 报警已清除: %d%n", alertId);
+                
+            } catch (Exception e) {
+                System.err.println("[CarSimulatorAlert] 清除报警失败: " + e.getMessage());
+            }
         }
     }
     

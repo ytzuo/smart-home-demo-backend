@@ -139,6 +139,19 @@ public class Light implements Furniture, AlertableDevice {
             if (alertSystem != null) {
                 alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
             }
+
+            // ======== 添加自动重置逻辑（5秒后恢复正常） ========
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000); // 延时5秒（可根据需求调整）
+                    if (isAbnormal) { // 确保未被手动重置过
+                        resetAlert();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); // 保留中断状态
+                }
+            }).start();
+
         }
     }
     
@@ -157,6 +170,19 @@ public class Light implements Furniture, AlertableDevice {
             if (alertSystem != null) {
                 alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
             }
+
+            // ======== 添加自动重置逻辑（5秒后恢复正常） ========
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000); // 延时5秒（可根据需求调整）
+                    if (isAbnormal) { // 确保未被手动重置过
+                        resetAlert();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); // 保留中断状态
+                }
+            }).start();
+
         }
     }
     
