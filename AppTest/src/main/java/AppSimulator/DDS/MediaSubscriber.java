@@ -57,6 +57,7 @@ public class MediaSubscriber {
         return true;
     }
 
+
     private class MediaListener implements DataReaderListener {
         @Override
         public void on_data_available(DataReader reader) {
@@ -113,11 +114,32 @@ public class MediaSubscriber {
 
         // 添加数据块
         MediaReceiver receiver = mediaReceivers.get(alertId);
+
+        // 添加调试信息
+        System.out.println("[调试] 接收到数据块: chunk_seq=" + media.chunk_seq + ", chunk_size=" + media.chunk_size + ", blob长度=" + media.chunk.length());
+
         // 处理Blob对象的方式 - 先获取byte数组
         byte[] chunkData = new byte[media.chunk.length()];
         for (int i = 0; i < media.chunk.length(); i++) {
             chunkData[i] = media.chunk.get_at(i);
         }
+
+        // 验证chunkData是否包含实际图片数据的特征
+        boolean hasImageHeader = false;
+        boolean hasNonZeroData = false;
+        if (chunkData.length >= 4) {
+            // JPEG文件头检测: JPEG文件通常以0xFFD8开头
+            if ((chunkData[0] & 0xFF) == 0xFF && (chunkData[1] & 0xFF) == 0xD8) {
+                hasImageHeader = true;
+            }
+        }
+        for (byte b : chunkData) {
+            if (b != 0) {
+                hasNonZeroData = true;
+                break;
+            }
+        }
+        System.out.println("[调试] chunkData数组: 长度=" + chunkData.length + ", 包含非零数据=" + hasNonZeroData + ", 可能包含图片头=" + hasImageHeader);
 
         boolean isComplete = receiver.addChunk(media.chunk_seq, chunkData);
 
@@ -136,8 +158,19 @@ public class MediaSubscriber {
 
     private void saveMedia(AlertMedia media, byte[] data) {
         try {
+            System.out.println("[调试] 开始保存媒体: 大小=" + data.length + ", deviceId=" + media.deviceId);
             String fileExtension = media.media_type == 1 ? ".jpg" : ".mp4";
             String fileName = SAVE_PATH + media.deviceId + "_" + media.alert_id + fileExtension;
+
+            // 确保保存目录存在
+            java.io.File saveDir = new java.io.File(SAVE_PATH);
+            if (!saveDir.exists()) {
+                if (saveDir.mkdirs()) {
+                    System.out.println("[调试] 创建保存目录成功: " + SAVE_PATH);
+                } else {
+                    System.err.println("[调试] 创建保存目录失败: " + SAVE_PATH);
+                }
+            }
 
             java.io.FileOutputStream fos = new java.io.FileOutputStream(fileName);
             fos.write(data);
@@ -147,6 +180,7 @@ public class MediaSubscriber {
                     fileName, data.length);
         } catch (Exception e) {
             System.err.println("[MediaSubscriber] 保存媒体文件失败: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -160,6 +194,7 @@ public class MediaSubscriber {
         public MediaReceiver(int totalSize) {
             data = new byte[totalSize];
             receivedChunks = new boolean[(int) Math.ceil((double) totalSize / CHUNK_SIZE)];
+            System.out.println("[调试] 创建MediaReceiver: totalSize=" + totalSize + ", totalChunks=" + receivedChunks.length);
         }
 
         public boolean addChunk(int chunkSeq, byte[] chunkData) {
@@ -171,9 +206,17 @@ public class MediaSubscriber {
             if (!receivedChunks[chunkSeq]) {
                 int offset = chunkSeq * CHUNK_SIZE;
                 int copyLength = Math.min(chunkData.length, data.length - offset);
-                System.arraycopy(chunkData, 0, data, offset, copyLength);
-                receivedChunks[chunkSeq] = true;
-                receivedBytes += copyLength;
+
+                // 确保chunkData不为空
+                if (copyLength > 0) {
+                    System.arraycopy(chunkData, 0, data, offset, copyLength);
+                    receivedChunks[chunkSeq] = true;
+                    receivedBytes += copyLength;
+                    System.out.println("[调试] 接收块 #" + chunkSeq + ", 大小=" + copyLength + ", 累计接收=" + receivedBytes);
+                } else {
+                    System.out.println("[调试] 跳过空数据块 #" + chunkSeq);
+                    receivedChunks[chunkSeq] = true; // 仍然标记为已接收，但不增加receivedBytes
+                }
             }
 
             // 检查是否所有块都已接收
@@ -182,19 +225,22 @@ public class MediaSubscriber {
                     return false;
                 }
             }
+            System.out.println("[调试] 所有块接收完成，总大小=" + receivedBytes);
             return true;
         }
 
-        public byte[] getData() {
-            return data;
-        }
-
         public double getProgress() {
-            return (double) receivedBytes / data.length;
+            double progress = (double) receivedBytes / (double) data.length;
+            System.out.println("[调试] 计算进度: receivedBytes=" + receivedBytes + ", data.length=" + data.length + ", progress=" + progress);
+            return progress;
         }
 
         public int getTotalChunks() {
             return receivedChunks.length;
+        }
+        // 添加缺少的getData()方法
+        public byte[] getData() {
+            return data;
         }
     }
 }
