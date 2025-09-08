@@ -378,7 +378,7 @@ public class AirConditioner implements Furniture, AlertableDevice {
             // ======== 添加自动重置逻辑（5秒后恢复正常） ========
             new Thread(() -> {
                 try {
-                    Thread.sleep(8000);
+                    Thread.sleep(5000);
                     if (isAbnormal) { // 确保未被手动重置过
                         resetAlert();
                     }
