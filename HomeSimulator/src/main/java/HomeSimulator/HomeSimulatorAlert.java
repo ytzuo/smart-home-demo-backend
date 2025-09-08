@@ -13,6 +13,9 @@ import IDL.HomeStatus;
 import IDL.HomeStatusDataWriter;
 import IDL.Alert;
 import IDL.AlertDataWriter;
+
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -275,6 +278,87 @@ public class HomeSimulatorAlert {
 
         // 通知监听器
         notifyListeners();
+
+        // 新增：发送警报的同时发送图片
+        try {
+            // 尝试获取与报警相关的设备ID（从message中提取）
+            String deviceId = "system";
+            if (message.contains("light1")) {
+                deviceId = "light1";
+            } else if (message.contains("light2")) {
+                deviceId = "light2";
+            } else if (message.contains("ac1")) {
+                deviceId = "ac1";
+            } else if (message.contains("ac2")) {
+                deviceId = "ac2";
+            }
+
+            // 媒体类型：1表示图片
+            int mediaType = 1;
+
+            // 这里应该是获取实际图片数据的逻辑
+            // 由于当前系统没有实际的摄像头，我们可以模拟获取一张与报警类型相关的图片
+            byte[] mediaData = getSampleImageData(type);
+
+            // 发送媒体数据
+            HomeSimulator.getInstance().sendMedia(deviceId, "camera", mediaType, mediaData);
+            System.out.printf("[HomeSimulatorAlert] 已发送与报警关联的图片，设备ID: %s%n", deviceId);
+        } catch (Exception e) {
+            // 如果发送媒体失败，不影响报警的正常触发
+            System.err.println("[HomeSimulatorAlert] 发送媒体数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取示例图片数据
+     * 注意：在实际应用中，这里应该从摄像头或文件系统获取真实的图片数据
+     */
+    private byte[] getSampleImageData(AlertType alertType) {
+        try {
+            // 这里应该是根据报警类型获取不同的图片
+            // 由于没有实际的图片资源，我们返回一个简单的字节数组作为示例
+            // 在实际应用中，应该读取真实的图片文件
+            String sampleImagePath = getImagePathForAlertType(alertType);
+            File imageFile = new File(sampleImagePath);
+
+            if (imageFile.exists() && imageFile.isFile()) {
+                byte[] data = new byte[(int) imageFile.length()];
+                try (FileInputStream fis = new FileInputStream(imageFile)) {
+                    fis.read(data);
+                }
+                return data;
+            } else {
+                // 如果文件不存在，返回一个默认的图片数据或空数据
+                System.out.println("[HomeSimulatorAlert] 未找到图片文件: " + sampleImagePath);
+                // 返回一个简单的示例数据
+                return new byte[]{(byte) 0x89, (byte) 0x50, (byte) 0x4E, (byte) 0x47, (byte) 0x0D, (byte) 0x0A, (byte) 0x1A, (byte) 0x0A}; // PNG文件头
+            }
+        } catch (Exception e) {
+            System.err.println("[HomeSimulatorAlert] 获取图片数据失败: " + e.getMessage());
+            return new byte[0];
+        }
+    }
+
+    /**
+     * 根据报警类型获取对应的图片路径
+     */
+    private String getImagePathForAlertType(AlertType alertType) {
+        // 在实际应用中，应该根据不同的报警类型返回不同的图片路径
+        // 这里只是一个示例实现
+        switch (alertType) {
+            case FIRE:
+                return "C:\\Users\\86183\\Pictures\\90.jpg";
+            case INTRUSION:
+                return "C:\\Users\\86183\\Pictures\\90.jpg";
+            case GAS_LEAK:
+                return "C:\\Users\\86183\\Pictures\\90.jpg";
+            case WATER_LEAK:
+                return "C:\\Users\\86183\\Pictures\\90.jpg";
+            case DEVICE_OVERHEAT:
+                return "C:\\Users\\86183\\Pictures\\90.jpg";
+            default:
+                return "C:\\Users\\86183\\Pictures\\90.jpg";
+        }
     }
 
     /**
