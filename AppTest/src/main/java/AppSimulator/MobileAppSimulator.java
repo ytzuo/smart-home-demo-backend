@@ -142,6 +142,8 @@ public class MobileAppSimulator {
         System.out.println("--- 家居控制 ---");
         System.out.println(" a. 灯光控制 (进入子菜单)");
         System.out.println(" b. 空调控制 (进入子菜单)");
+        // 添加获取所有设备状态的选项
+        System.out.println(" c. 获取所有设备状态");
         System.out.print("请输入家居命令> ");
         String input = scanner.nextLine().trim();
 
@@ -152,11 +154,21 @@ public class MobileAppSimulator {
             case "b":
                 handleAirConditionerCommands(scanner);
                 break;
+            // 添加处理获取所有设备状态的逻辑
+            case "c":
+                System.out.println("正在请求所有家居设备状态...");
+                sendAllStatusRequest();
+                break;
             default:
                 System.out.println("无效命令，请重新输入");
         }
     }
-
+    // 新增：发送获取所有设备状态的请求
+    private void sendAllStatusRequest() {
+        // 向HomeSimulator发送请求所有状态的命令
+        sendCommand("home", "request_all_status");
+        System.out.println("已发送获取所有设备状态的请求，请查看状态更新");
+    }
     // 新增：灯光控制子菜单处理方法
     private void handleLightCommands(Scanner scanner) {
         System.out.println("\n--- 灯光控制子菜单 ---");

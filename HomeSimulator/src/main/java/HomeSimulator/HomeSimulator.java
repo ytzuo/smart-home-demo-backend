@@ -185,6 +185,13 @@ public class HomeSimulator {
         System.out.printf("[HomeSimulator] 处理命令: deviceType=%s, action=%s%n", deviceType, action);
 
         try {
+            // 新增：处理请求所有设备状态的命令
+            if ("request_all_status".equalsIgnoreCase(action)) {
+                System.out.println("[HomeSimulator] 接收到获取所有设备状态的请求，正在上报...");
+                furnitureManager.publishGlobalHomeStatus();
+                return;
+            }
+
             switch (deviceType.toLowerCase()) {
                 case "home":
                     handleHomeCommand(action);

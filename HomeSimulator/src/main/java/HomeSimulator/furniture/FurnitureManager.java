@@ -426,7 +426,7 @@ public class FurnitureManager {
     /**
      * 发布全局HomeStatus到DDS（定时上报所有家具状态）
      */
-    private void publishGlobalHomeStatus() {
+    public void publishGlobalHomeStatus() {
         if (homeStatusDataWriter == null || !running.get()) {
             return;
         }
