@@ -709,7 +709,14 @@ public class HomeSimulatorAlert {
                     device.getId(), statusRecord.type);
         }
     }
-    
+    // 在HomeSimulatorAlert.java中的适当位置添加
+    public void triggerAlertWithMedia(String deviceId, AlertType alertType, byte[] mediaData, int mediaType) {
+        // 触发报警
+        triggerAlert(alertType, deviceId);
+
+        // 发送相关媒体
+        HomeSimulator.getInstance().sendMedia(deviceId, "camera", mediaType, mediaData);
+    }
     /**
      * 判断报警类型是否为设备相关报警
      * @param type 报警类型

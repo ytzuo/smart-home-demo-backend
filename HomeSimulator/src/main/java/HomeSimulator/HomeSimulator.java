@@ -15,7 +15,12 @@ import com.zrdds.topic.Topic;
 import IDL.Presence;
 import IDL.PresenceTypeSupport;
 import IDL.PresenceDataWriter;
+import HomeSimulator.DDS.MediaPublisher;
+import IDL.AlertMediaTypeSupport;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -36,6 +41,10 @@ public class HomeSimulator {
     private AtomicBoolean running;
     private PresenceDataWriter presenceDataWriter;
     private Topic presenceTopic;
+    // 在类的成员变量部分添加
+    private MediaPublisher mediaPublisher;
+    private Topic alertMediaTopic;
+
     public HomeSimulator() {
         loadLibrary();
         this.running = new AtomicBoolean(false);
@@ -48,6 +57,10 @@ public class HomeSimulator {
      */
     public static HomeSimulatorAlert getAlertSystem() {
         return instance != null ? instance.alertSystem : null;
+    }
+
+    public static HomeSimulator getInstance() {
+        return instance;
     }
 
     private void loadLibrary() {
@@ -100,7 +113,9 @@ public class HomeSimulator {
                 ddsParticipant.getDomainParticipant(), "Presence");
         AlertTypeSupport.get_instance().register_type(
                 ddsParticipant.getDomainParticipant(), "Alert");
-        
+        // 新增：注册AlertMedia类型
+        AlertMediaTypeSupport.get_instance().register_type(
+                ddsParticipant.getDomainParticipant(), "AlertMedia");
         // 创建Topic
         Topic commandTopic = ddsParticipant.createTopic(
                 "Command", CommandTypeSupport.get_instance());
@@ -110,7 +125,9 @@ public class HomeSimulator {
                 "Presence", PresenceTypeSupport.get_instance());
         Topic alertTopic = ddsParticipant.createTopic(
                 "Alert", AlertTypeSupport.get_instance());
-        
+        // 新增：创建AlertMedia Topic
+        alertMediaTopic = ddsParticipant.createTopic(
+                "AlertMedia", AlertMediaTypeSupport.get_instance());
         // 初始化订阅者（命令接收）
         commandSubscriber = new CommandSubscriber();
         commandSubscriber.start(
@@ -126,6 +143,10 @@ public class HomeSimulator {
         alertSystem = new HomeSimulatorAlert(ddsPublisher, homeStatusTopic, alertTopic);
         alertSystem.setFurnitureManager(furnitureManager);
 
+        // 新增：初始化MediaPublisher
+        mediaPublisher = new MediaPublisher();
+        mediaPublisher.start(ddsPublisher, alertMediaTopic);
+
         // 创建Presence DataWriter
         DataWriterQos presenceQos = new DataWriterQos();
         ddsPublisher.get_default_datawriter_qos(presenceQos);
@@ -139,7 +160,13 @@ public class HomeSimulator {
 
         System.out.println("[HomeSimulator] DDS初始化完成");
     }
-
+    // 新增：添加发送媒体的公共方法，供其他组件调用
+    public boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData) {
+        if (mediaPublisher != null) {
+            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData);
+        }
+        return false;
+    }
     // 添加Presence单次发送方法
     private void publishPresenceStatus() {
         if (presenceDataWriter == null) {
@@ -434,6 +461,7 @@ public class HomeSimulator {
             System.out.println("  lh1 - 触发light1过热报警");
             System.out.println("  at1 - 触发ac1温度异常报警");
             System.out.println("  ap1 - 触发ac1性能异常报警");
+            System.out.println("  sendimg - 发送图片到Mobile端");
             System.out.println("  q   - 退出程序");
             System.out.println("====================");
 
@@ -454,6 +482,9 @@ public class HomeSimulator {
                     case "ap1":
                         triggerAirConditionerAlert("ac1", "performance");
                         break;
+                    case "sendimg":
+                        sendImageToMobile();
+                        break;
                     case "q":
                         System.out.println("正在退出...");
                         shutdown();
@@ -468,6 +499,58 @@ public class HomeSimulator {
         consoleThread.start();
     }
 
+    /**
+     * 读取图片文件并转换为字节数组
+     */
+    private byte[] readImageFile(String imagePath) throws IOException {
+        File file = new File(imagePath);
+        if (!file.exists() || !file.isFile()) {
+            throw new IOException("图片文件不存在: " + imagePath);
+        }
+
+        System.out.println("[HomeSimulator] 正在读取图片文件: " + imagePath + ", 大小: " + file.length() + " bytes");
+        byte[] data = new byte[(int) file.length()];
+        try (FileInputStream fis = new FileInputStream(file)) {
+            fis.read(data);
+        }
+        return data;
+    }
+
+    /**
+     * 发送图片到MobileAppSimulator
+     */
+    private void sendImageToMobile() {
+        try {
+            java.util.Scanner scanner = new java.util.Scanner(System.in);
+
+            System.out.print("请输入图片文件路径: ");
+            String imagePath = scanner.nextLine().trim();
+
+            // 默认使用light1设备ID和类型
+            String deviceId = "light1";
+            String deviceType = "light";
+
+            // 读取图片文件
+            byte[] imageData = readImageFile(imagePath);
+
+            // 通过mediaPublisher发送图片
+            if (mediaPublisher != null) {
+                // 媒体类型：1代表图片
+                boolean result = mediaPublisher.publishMedia(deviceId, deviceType, 1, imageData);
+
+                if (result) {
+                    System.out.println("[HomeSimulator] 图片发送成功！Mobile端应该能够接收到图片数据");
+                } else {
+                    System.err.println("[HomeSimulator] 图片发送失败");
+                }
+            } else {
+                System.err.println("[HomeSimulator] MediaPublisher未初始化");
+            }
+        } catch (Exception e) {
+            System.err.println("[HomeSimulator] 发送图片时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
     /**
      * 触发灯具报警
      */
