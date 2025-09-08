@@ -2,6 +2,7 @@ package HomeSimulator.DDS;
 
 import IDL.AlertMedia;
 import IDL.AlertMediaDataWriter;
+import IDL.Blob;
 import com.zrdds.infrastructure.InstanceHandle_t;
 import com.zrdds.infrastructure.ReturnCode_t;
 import com.zrdds.publication.DataWriterQos;
@@ -59,6 +60,16 @@ public class MediaPublisher {
             return false;
         }
 
+        // 添加调试信息：检查数据是否有效
+        boolean hasNonZeroData = false;
+        for (int i = 0; i < Math.min(10, fileData.length); i++) {
+            if (fileData[i] != 0) {
+                hasNonZeroData = true;
+                break;
+            }
+        }
+        System.out.println("[MediaPublisher] 文件数据预览：前10字节" + (hasNonZeroData ? "包含非零数据" : "全部为0"));
+
         int totalSize = fileData.length;
         int totalChunks = (int) Math.ceil((double) totalSize / CHUNK_SIZE);
         int alertId = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
@@ -83,11 +94,75 @@ public class MediaPublisher {
             // 设置块数据
             byte[] chunkData = new byte[currentChunkSize];
             System.arraycopy(fileData, chunkSeq * CHUNK_SIZE, chunkData, 0, currentChunkSize);
+            System.out.println(chunkData.length);
+            // 检查块数据是否有效
+            boolean chunkHasData = false;
+            for (int i = 0; i < Math.min(10, chunkData.length); i++) {
+                if (chunkData[i] != 0) {
+                    chunkHasData = true;
+                    break;
+                }
+            }
+            System.out.printf("[MediaPublisher] 准备发送块 #%d: 大小=%d, %s\n",
+                    chunkSeq, currentChunkSize, chunkHasData ? "包含数据" : "数据为空");
+
+
+            // 修复：使用正确的方式创建和填充Blob对象
             media.chunk = new IDL.Blob();
-            for (byte b : chunkData) {
-                media.chunk.append(b);
+            try {
+                // 方法1：使用ensure_length预分配空间，然后用set_at逐个填充字节
+                media.chunk.ensure_length(currentChunkSize, currentChunkSize);
+                for (int i = 0; i < currentChunkSize; i++) {
+                    media.chunk.set_at(i, chunkData[i]);
+                }
+
+                // 验证Blob对象数据
+                System.out.printf("[MediaPublisher] Blob对象创建完成(方法1): 长度=%d\n", media.chunk.length());
+
+                // 验证数据是否正确填充
+                boolean blobHasData = false;
+                for (int i = 0; i < Math.min(10, media.chunk.length()); i++) {
+                    try {
+                        if (media.chunk.get_at(i) != 0) {
+                            blobHasData = true;
+                            break;
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[MediaPublisher] 获取Blob数据时出错: " + e.getMessage());
+                        break;
+                    }
+                }
+                System.out.printf("[MediaPublisher] Blob对象验证: 长度=%d, 包含数据=%s\n",
+                        media.chunk.length(), blobHasData);
+            } catch (Exception e) {
+                System.err.println("[MediaPublisher] 创建Blob对象时出错: " + e.getMessage());
+                return false;
             }
 
+
+            // 增强的Blob对象验证
+            boolean blobHasData = false;
+            boolean hasImageHeader = false;
+            if (media.chunk.length() >= 4 && chunkSeq == 0) {
+                // 检查第一个块是否包含JPEG文件头
+                if ((chunkData[0] & 0xFF) == 0xFF && (chunkData[1] & 0xFF) == 0xD8) {
+                    hasImageHeader = true;
+                }
+            }
+            for (int i = 0; i < Math.min(10, media.chunk.length()); i++) {
+                try {
+                    if (media.chunk.get_at(i) != 0) {
+                        blobHasData = true;
+                        break;
+                    }
+                } catch (Exception e) {
+                    System.err.println("[MediaPublisher] 获取Blob数据时出错: " + e.getMessage());
+                    break;
+                }
+            }
+            System.out.printf("[MediaPublisher] Blob对象验证: 长度=%d, 包含数据=%s, 可能包含图片头=%s\n",
+                    media.chunk.length(), blobHasData, hasImageHeader);
+            System.out.println("aaaaas");
             // 发送数据
             ReturnCode_t rtn = writer.write(media, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (rtn == ReturnCode_t.RETCODE_OK) {
