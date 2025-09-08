@@ -123,6 +123,15 @@ public class FurnitureManager {
     public void stop() {
         if (running.compareAndSet(true, false)) {
             System.out.println("[FurnitureManager] 正在停止...");
+            // ======== 新增：停止所有家具的定时任务 ========
+            for (Furniture furniture : furnitureMap.values()) {
+                if (furniture instanceof Light) { // 针对Light类型调用stop()
+                    ((Light) furniture).stop();
+                }
+                else if (furniture instanceof AirConditioner) {
+                    ((AirConditioner) furniture).stop();
+                }
+            }
             executorService.shutdown();
             scheduledExecutorService.shutdown();
 
