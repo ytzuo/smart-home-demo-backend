@@ -281,18 +281,25 @@ public class HomeSimulatorAlert {
 
         // 新增：发送警报的同时发送图片
         try {
+
             // 尝试获取与报警相关的设备ID（从message中提取）
             String deviceId = "system";
+            String deviceType = "system";
             if (message.contains("light1")) {
                 deviceId = "light1";
+                deviceType = "light";
             } else if (message.contains("light2")) {
                 deviceId = "light2";
+                deviceType = "light";
             } else if (message.contains("ac1")) {
                 deviceId = "ac1";
+                deviceType = "ac";
             } else if (message.contains("ac2")) {
                 deviceId = "ac2";
+                deviceType = "ac";
             }
-
+// 统一逻辑：先发布警报消息，确保 alert_id 设置正确
+            publishDeviceAlertMessage(deviceId, deviceType, type, message, true);
             // 媒体类型：1表示图片
             int mediaType = 1;
 
@@ -706,6 +713,12 @@ public class HomeSimulatorAlert {
                         break;
                     case DEVICE_OVERHEAT:
                         alertId = 5;
+                        break;
+                    case GAS_LEAK:
+                        alertId = 6;
+                        break;
+                    case WATER_LEAK:
+                        alertId = 7;
                         break;
                     case LIGHT_ABNORMAL:
                         alertId = 4; // 映射为设备故障
