@@ -123,6 +123,15 @@ public class FurnitureManager {
     public void stop() {
         if (running.compareAndSet(true, false)) {
             System.out.println("[FurnitureManager] 正在停止...");
+            // ======== 新增：停止所有家具的定时任务 ========
+            for (Furniture furniture : furnitureMap.values()) {
+                if (furniture instanceof Light) { // 针对Light类型调用stop()
+                    ((Light) furniture).stop();
+                }
+                else if (furniture instanceof AirConditioner) {
+                    ((AirConditioner) furniture).stop();
+                }
+            }
             executorService.shutdown();
             scheduledExecutorService.shutdown();
 
@@ -426,7 +435,7 @@ public class FurnitureManager {
     /**
      * 发布全局HomeStatus到DDS（定时上报所有家具状态）
      */
-    private void publishGlobalHomeStatus() {
+    public void publishGlobalHomeStatus() {
         if (homeStatusDataWriter == null || !running.get()) {
             return;
         }
@@ -445,6 +454,15 @@ public class FurnitureManager {
             if (result == ReturnCode_t.RETCODE_OK) {
                 System.out.println("[FurnitureManager] 全局状态定时上报成功 - " + 
                     aggregatedHomeStatus.deviceIds.length() + " 个设备");
+                // 输出所有设备状态详情
+                System.out.println("[FurnitureManager] 设备状态详情:");
+                for (int i = 0; i < aggregatedHomeStatus.deviceIds.length(); i++) {
+                    String deviceId = aggregatedHomeStatus.deviceIds.get_at(i);
+                    String deviceType = aggregatedHomeStatus.deviceTypes.get_at(i);
+                    String deviceStatus = aggregatedHomeStatus.deviceStatus.get_at(i);
+                    System.out.printf("[FurnitureManager]   设备ID: %s, 类型: %s, 状态: %s%n",
+                            deviceId, deviceType, deviceStatus);
+                }
             } else {
                 System.err.println("[FurnitureManager] 全局状态定时上报失败，返回码: " + result);
             }

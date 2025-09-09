@@ -13,6 +13,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 灯具类 - 独立实现状态上报逻辑，支持独立报警
@@ -39,7 +42,10 @@ public class Light implements Furniture, AlertableDevice {
     private FurnitureManager manager; // 家具管理器（用于更新全局状态）
     private HomeSimulatorAlert alertSystem; // 报警系统引用
     private final List<StatusChangeListener> statusChangeListeners = new CopyOnWriteArrayList<>(); // 状态监听器集合
-
+    // ======== 新增：状态调度与动态变化相关属性 ========
+    private ScheduledExecutorService statusScheduler; // 状态调度器
+    private int consecutiveHighBrightnessCount = 0; // 高亮度连续计数（用于异常检测）
+    
     /**
      * 构造函数
      */
@@ -51,8 +57,80 @@ public class Light implements Furniture, AlertableDevice {
         this.isOn = false;     // 默认关闭
         this.ddsWriter = ddsWriter;
         this.manager = manager;
+
+        // ======== 新增：初始化状态调度器并启动动态变化 ========
+        this.statusScheduler = Executors.newSingleThreadScheduledExecutor();
+        startDynamicStatusChanges();
     }
-    
+
+    private void startDynamicStatusChanges() {
+        // 每20-40秒随机调整一次状态（仅在灯具开启时）
+        statusScheduler.scheduleAtFixedRate(() -> {
+            if (isOn && random.nextDouble() < 0.8) { // 80%概率触发状态变化
+                autoAdjustStatus();
+            }
+            // 无论是否变化，均检测异常状态
+            detectAbnormalStatus();
+        }, 5, random.nextInt(10000) + 10000, TimeUnit.MILLISECONDS); // 初始延迟5秒，周期10-20秒
+    }
+
+    // ======== 异常状态检测 ========
+    private void detectAbnormalStatus() {
+        if (!isOn) {
+            consecutiveHighBrightnessCount = 0; // 灯具关闭时重置计数
+            return;
+        }
+
+        // 检测高亮度异常（连续3次检测到亮度≥90%触发过热报警）
+        if (brightness >= 90) {
+            consecutiveHighBrightnessCount++;
+            System.out.printf("[Light] %s 高亮度预警(%d/3): %d%%%n",
+                    name, consecutiveHighBrightnessCount, brightness);
+
+            if (consecutiveHighBrightnessCount >= 3) {
+                triggerOverheatAlert(); // 触发过热报警
+                consecutiveHighBrightnessCount = 0; // 报警后重置计数
+            }
+        } else {
+            consecutiveHighBrightnessCount = Math.max(0, consecutiveHighBrightnessCount - 1); // 正常状态递减计数
+        }
+    }
+
+    // ======== 自动调整状态（亮度/色温/场景） ========
+    private void autoAdjustStatus() {
+        try {
+            // 随机选择调整类型：亮度(50%)/色温(30%)/场景(20%)
+            double adjustType = random.nextDouble();
+
+            if (adjustType < 0.5) { // 50%概率调整亮度
+                int newBrightness = brightness + random.nextInt(41) - 20; // -10~+10范围内调整
+                newBrightness = Math.max(10, Math.min(100, newBrightness)); // 限制在10-100
+                setBrightness(newBrightness);
+                System.out.printf("[Light] %s 自动调整亮度: %d%%%n", name, newBrightness);
+            }
+            else if (adjustType < 0.8) { // 30%概率调整色温
+                List<String> validTemps = Arrays.asList("暖白", "冷白", "中性");
+                String newTemp = validTemps.get(random.nextInt(validTemps.size()));
+                if (!newTemp.equals(colorTemp)) {
+                    setColorTemp(newTemp);
+                    System.out.printf("[Light] %s 自动切换色温: %s%n", name, newTemp);
+                }
+            }
+            else { // 20%概率调整场景模式
+                List<String> validModes = Arrays.asList("日常", "阅读", "睡眠", "影院");
+                String newMode = validModes.get(random.nextInt(validModes.size()));
+                if (!newMode.equals(sceneMode)) {
+                    setSceneMode(newMode);
+                    System.out.printf("[Light] %s 自动切换场景: %s%n", name, newMode);
+                }
+            }
+
+            publishStatus(); // 状态变化后主动上报
+        } catch (Exception e) {
+            System.err.println("[Light] 自动调整状态失败: " + e.getMessage());
+        }
+    }
+
     /**
      * 设置报警系统引用
      * @param alertSystem 报警系统
@@ -137,12 +215,25 @@ public class Light implements Furniture, AlertableDevice {
             alertType = "light_status_abnormal";
             alertMessage = String.format("灯具 %s 状态异常，可能存在电路问题", name);
             
-            System.out.printf("[Light] 手动触发异常: ID=%s, 类型=%s, 消息=%s%n", 
+            System.out.printf("[Light] 触发电路警报: ID=%s, 类型=%s, 消息=%s%n",
                     id, alertType, alertMessage);
             
             if (alertSystem != null) {
                 alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
             }
+
+            // ======== 添加自动重置逻辑（5秒后恢复正常） ========
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000); // 延时5秒（可根据需求调整）
+                    if (isAbnormal) { // 确保未被手动重置过
+                        resetAlert();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); // 保留中断状态
+                }
+            }).start();
+
         }
     }
     
@@ -155,12 +246,31 @@ public class Light implements Furniture, AlertableDevice {
             alertType = "light_overheat";
             alertMessage = String.format("灯具 %s 温度异常，可能存在过热风险", name);
             
-            System.out.printf("[Light] 手动触发异常: ID=%s, 类型=%s, 消息=%s%n", 
+            System.out.printf("[Light] 触发过热报警: ID=%s, 类型=%s, 消息=%s%n",
                     id, alertType, alertMessage);
             
             if (alertSystem != null) {
                 alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
             }
+
+            // ======== 自动重置逻辑（5秒后恢复正常） ========
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000); // 延时5秒（可根据需求调整）
+                    if (isAbnormal) { // 确保未被手动重置过
+                        resetAlert();
+                        // 异常恢复后适当降低亮度
+                        if (brightness >= 90) {
+                            setBrightness(brightness - 20);
+                            System.out.printf("[Light] %s 异常恢复，自动降低亮度至: %d%%%n", name, brightness);
+                            publishStatus();
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); // 保留中断状态
+                }
+            }).start();
+
         }
     }
     
@@ -332,6 +442,14 @@ public class Light implements Furniture, AlertableDevice {
     public void notifyStatusChange(String oldStatus, String newStatus) {
         for (StatusChangeListener listener : statusChangeListeners) {
             listener.onStatusChanged(getId(), oldStatus, newStatus);
+        }
+    }
+
+    // ======== 停止定时任务（确保资源释放） ========
+    public void stop() {
+        if (statusScheduler != null) {
+            statusScheduler.shutdownNow();
+            System.out.printf("[Light] %s 停止状态调度任务%n", name);
         }
     }
 

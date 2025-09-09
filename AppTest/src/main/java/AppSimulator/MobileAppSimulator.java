@@ -1,18 +1,18 @@
 package AppSimulator;
 
-import AppSimulator.DDS.AlertSubscriber;
-import AppSimulator.DDS.CommandPublisher;
-import AppSimulator.DDS.DdsParticipant;
-import AppSimulator.DDS.StatusSubscriber;
+import AppSimulator.DDS.*;
 import IDL.*;
 import com.zrdds.topic.Topic;
-
+// 在类的顶部导入必要的包
+import AppSimulator.DDS.MediaSubscriber;
+import IDL.AlertMediaTypeSupport;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MobileAppSimulator {
     private static boolean hasLoad = false;
-
+    // 在类的成员变量部分添加
+    private MediaSubscriber mediaSubscriber;
     private CommandPublisher commandPublisher;
     private AlertSubscriber alertSubscriber;
     private AlertSubscriber carAlertSubscriber;
@@ -31,6 +31,8 @@ public class MobileAppSimulator {
         HomeStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "HomeStatus");
         VehicleStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleStatus");
         AlertTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Alert");
+        // 新增：注册AlertMedia类型
+        AlertMediaTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "AlertMedia");
         // 添加Presence类型注册
         PresenceTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Presence");
         // 创建Topic
@@ -39,6 +41,10 @@ public class MobileAppSimulator {
         Topic vehicleStatusTopic = participant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
         // 添加Presence Topic
         Topic presenceTopic = participant.createTopic("Presence", PresenceTypeSupport.get_instance());
+        // 新增：创建AlertMedia Topic
+        Topic alertMediaTopic = participant.createTopic(
+                "AlertMedia", AlertMediaTypeSupport.get_instance());
+
         // 初始化Publisher和Subscriber
         commandPublisher = new CommandPublisher();
         commandPublisher.start(participant.getPublisher(), commandTopic);
@@ -64,6 +70,11 @@ public class MobileAppSimulator {
             System.err.println("车辆报警监听初始化失败");
         }
 
+// 新增：初始化MediaSubscriber
+        mediaSubscriber = new MediaSubscriber();
+        mediaSubscriber.start(
+               participant.getSubscriber(),
+                alertMediaTopic);
         System.out.println("DDS 初始化完成");
     }
 
@@ -142,6 +153,8 @@ public class MobileAppSimulator {
         System.out.println("--- 家居控制 ---");
         System.out.println(" a. 灯光控制 (进入子菜单)");
         System.out.println(" b. 空调控制 (进入子菜单)");
+        // 添加获取所有设备状态的选项
+        System.out.println(" c. 获取所有设备状态");
         System.out.print("请输入家居命令> ");
         String input = scanner.nextLine().trim();
 
@@ -152,11 +165,21 @@ public class MobileAppSimulator {
             case "b":
                 handleAirConditionerCommands(scanner);
                 break;
+            // 添加处理获取所有设备状态的逻辑
+            case "c":
+                System.out.println("正在请求所有家居设备状态...");
+                sendAllStatusRequest();
+                break;
             default:
                 System.out.println("无效命令，请重新输入");
         }
     }
-
+    // 新增：发送获取所有设备状态的请求
+    private void sendAllStatusRequest() {
+        // 向HomeSimulator发送请求所有状态的命令
+        sendCommand("home", "request_all_status");
+        System.out.println("已发送获取所有设备状态的请求，请查看状态更新");
+    }
     // 新增：灯光控制子菜单处理方法
     private void handleLightCommands(Scanner scanner) {
         System.out.println("\n--- 灯光控制子菜单 ---");
@@ -279,6 +302,7 @@ public class MobileAppSimulator {
             }
         }
     }
+
 
     public static void main(String[] args) {
         System.out.println("启动手机App模拟器...");

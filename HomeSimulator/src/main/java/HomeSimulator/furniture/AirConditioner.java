@@ -13,6 +13,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 空调类 - 实现Furniture接口和AlertableDevice接口
@@ -66,9 +69,12 @@ public class AirConditioner implements Furniture, AlertableDevice {
     private String alertMessage = "";
     private String alertType = "ac_abnormal";
     private final Random random = new Random();
-    private int abnormalCounter = 0;
-    private static final int ABNORMAL_THRESHOLD = 2;  // 降低阈值，更容易触发报警
 
+
+    // ======== 新增：状态调度与动态变化相关属性 ========
+    private ScheduledExecutorService statusScheduler; // 状态调度器
+    private int consecutiveAbnormalTempCount = 0; // 连续温度异常计数
+    private double lastTemperature; // 上一次温度记录（用于检测波动）
     /**
      * 构造函数
      */
@@ -86,8 +92,114 @@ public class AirConditioner implements Furniture, AlertableDevice {
         this.coolingMode = false;
         this.swingMode = false;
         this.dehumidificationMode = false;
+
+        // ======== 新增：初始化状态调度器并启动动态变化 ========
+        this.statusScheduler = Executors.newSingleThreadScheduledExecutor();
+        this.lastTemperature = currentTemperature; // 初始化温度记录
+        startDynamicStatusChanges();
     }
-    
+
+    // ========启动动态状态变化 ========
+    private void startDynamicStatusChanges() {
+        // 每30-60秒随机调整一次状态（仅在空调开启时）
+        statusScheduler.scheduleAtFixedRate(() -> {
+            if (isOn && random.nextDouble() < 0.8) { // 80%概率触发状态变化
+                autoAdjustStatus();
+            }
+            // 无论是否变化，均检测异常状态
+            detectAbnormalStatus();
+        }, 10, random.nextInt(15000) + 15000, TimeUnit.MILLISECONDS); // 初始延迟10秒，周期15-30秒
+    }
+
+    // ======== 自动调整状态（温度/模式/功能） ========
+    private void autoAdjustStatus() {
+        try {
+            // 随机选择调整类型：温度(40%)/模式(25%)/扫风(20%)/除湿(15%)
+            double adjustType = random.nextDouble();
+
+            if (adjustType < 0.4) { // 40%概率调整目标温度
+                double tempChange = (random.nextBoolean() ? 1 : -1) * (1.0 + random.nextDouble()); // ±1.0-2.0℃
+                double newTemp = targetTemperature + tempChange;
+                newTemp = Math.max(16.0, Math.min(30.0, newTemp)); // 限制16-30℃
+                this.targetTemperature = newTemp;
+                this.temperature = (int)Math.round(newTemp); // 同步int类型temperature字段
+                System.out.printf("[AirConditioner] %s 自动调整目标温度: %.1f℃%n", name, newTemp);
+            }
+            else if (adjustType < 0.65) { // 25%概率切换模式
+                Mode[] validModes = {Mode.COOL, Mode.HEAT, Mode.FAN, Mode.AUTO};
+                Mode newMode = validModes[random.nextInt(validModes.length)];
+                if (newMode != currentMode) {
+                    this.currentMode = newMode;
+                    this.coolingMode = (newMode == Mode.COOL); // 同步制冷模式状态
+                    System.out.printf("[AirConditioner] %s 自动切换模式: %s%n", name, newMode.getValue());
+                }
+            }
+            else if (adjustType < 0.85) { // 20%概率切换扫风模式
+                this.swingMode = !swingMode;
+                System.out.printf("[AirConditioner] %s 自动%s扫风模式%n", name, swingMode ? "开启" : "关闭");
+            }
+            else { // 15%概率切换除湿模式
+                this.dehumidificationMode = !dehumidificationMode;
+                System.out.printf("[AirConditioner] %s 自动%s除湿模式%n", name, dehumidificationMode ? "开启" : "关闭");
+            }
+
+            // 更新当前温度（模拟温度变化）
+            simulateTemperatureChange();
+            publishStatus(); // 状态变化后主动上报
+        } catch (Exception e) {
+            System.err.println("[AirConditioner] 自动调整状态失败: " + e.getMessage());
+        }
+    }
+
+    // ========模拟温度变化 ========
+    private void simulateTemperatureChange() {
+        if (!isOn) return;
+
+        double tempDelta = 0.0;
+        if (currentMode == Mode.COOL && currentTemperature > targetTemperature) {
+            tempDelta = -0.3 - random.nextDouble() * 0.4; // 制冷时温度下降0.3-0.7℃
+        }
+        else if (currentMode == Mode.HEAT && currentTemperature < targetTemperature) {
+            tempDelta = 0.3 + random.nextDouble() * 0.4; // 制热时温度上升0.3-0.7℃
+        }
+        else {
+            tempDelta = (random.nextBoolean() ? 1 : -1) * random.nextDouble() * 0.2; // 其他模式小幅波动±0-0.2℃
+        }
+
+        this.currentTemperature = Math.max(10.0, Math.min(40.0, currentTemperature + tempDelta)); // 限制合理温度范围
+        System.out.printf("[AirConditioner] %s 当前温度变化: %.1f℃ (目标: %.1f℃)%n",
+                name, currentTemperature, targetTemperature);
+    }
+
+    // ======== 异常状态检测 ========
+    private void detectAbnormalStatus() {
+        if (!isOn) {
+            consecutiveAbnormalTempCount = 0; // 关闭时重置计数
+            return;
+        }
+
+        // 检测温度异常（目标与实际偏差过大，或温度波动异常）
+        double tempDiff = Math.abs(currentTemperature - targetTemperature);
+        double tempFluctuation = Math.abs(currentTemperature - lastTemperature);
+        this.lastTemperature = currentTemperature; // 更新温度记录
+
+        // 异常条件：偏差>3℃ 或 波动>1℃/周期（连续2次检测到）
+        boolean isTempAbnormal = (tempDiff > 3.0) || (tempFluctuation > 1.0);
+
+        if (isTempAbnormal) {
+            consecutiveAbnormalTempCount++;
+            System.out.printf("[AirConditioner] %s 温度异常预警(%d/2): 偏差=%.1f℃, 波动=%.1f℃%n",
+                    name, consecutiveAbnormalTempCount, tempDiff, tempFluctuation);
+
+            if (consecutiveAbnormalTempCount >= 2) { // 连续2次异常触发报警
+                triggerTemperatureAbnormalAlert();
+                consecutiveAbnormalTempCount = 0;
+            }
+        } else {
+            consecutiveAbnormalTempCount = Math.max(0, consecutiveAbnormalTempCount - 1); // 正常状态递减计数
+        }
+    }
+
     /**
      * 设置报警系统引用
      * @param alertSystem 报警系统
@@ -256,15 +368,37 @@ public class AirConditioner implements Furniture, AlertableDevice {
             alertMessage = String.format("空调 %s 温度异常: 当前%.1f℃, 目标%.1f℃",
                     name, currentTemperature, targetTemperature);
             
-            System.out.printf("[AirConditioner] 手动触发异常: ID=%s, 类型=%s, 消息=%s%n", 
+            System.out.printf("[AirConditioner] 触发温度异常警报: ID=%s, 类型=%s, 消息=%s%n",
                     id, alertType, alertMessage);
             
             if (alertSystem != null) {
                 alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
             }
+
+            // ======== 添加自动重置逻辑（5秒后恢复正常） ========
+            new Thread(() -> {
+                try {
+                    Thread.sleep(5000);
+                    if (isAbnormal) { // 确保未被手动重置过
+                        resetAlert();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); // 保留中断状态
+                }
+            }).start();
+
         }
     }
-    
+
+    // ======== 停止定时任务（确保资源释放） ========
+    public void stop() {
+        if (statusScheduler != null) {
+            statusScheduler.shutdownNow();
+            System.out.printf("[AirConditioner] %s 停止状态调度任务%n", name);
+        }
+    }
+
+
     /**
      * 手动触发空调性能异常报警
      */
@@ -281,6 +415,19 @@ public class AirConditioner implements Furniture, AlertableDevice {
             if (alertSystem != null) {
                 alertSystem.receiveDeviceAlert(id, type, alertType, alertMessage);
             }
+
+            // ======== 添加自动重置逻辑（5秒后恢复正常） ========
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000); // 延时5秒（可根据需求调整）
+                    if (isAbnormal) { // 确保未被手动重置过
+                        resetAlert();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); // 保留中断状态
+                }
+            }).start();
+
         }
     }
 
@@ -289,7 +436,6 @@ public class AirConditioner implements Furniture, AlertableDevice {
     @Override public void resetAlert() {
         isAbnormal = false;
         alertMessage = "";
-        abnormalCounter = 0;
         System.out.printf("[AirConditioner] 空调 %s 恢复正常%n", name);
         
         // 通知报警系统清除报警

@@ -5,7 +5,6 @@ import IDL.Command;
 import IDL.CommandTypeSupport;
 import IDL.VehicleStatusTypeSupport;
 import com.zrdds.topic.Topic;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,6 +30,15 @@ public class CarSimulator {
     private boolean acOn = false;
     private String location = "Garage";
     private String timeStamp = getCurrentTimeStamp();
+    // 状态自动更新调度器
+    private ScheduledExecutorService statusUpdater;
+    // 基础油耗(%)/秒（发动机启动时）
+    private static final float BASE_FUEL_CONSUMPTION = 0.08f;
+    // 空调额外油耗(%)/秒
+    private static final float AC_EXTRA_CONSUMPTION = 0.04f;
+    // 发动机运行累计时间(秒) - 临时变量，不算新增状态
+    private long engineRunningTime = 0;
+
     private String getCurrentTimeStamp() {
         return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
     }
@@ -59,9 +67,71 @@ public class CarSimulator {
 
         running.set(true);
         initDDS();
-        //startStatusReporting();
+        startStatusReporting();
         startConsoleInteraction();
-        keepRunning(); // 阻塞主线程
+        // 启动状态自动更新
+        startRealisticStatusUpdates();
+        // 阻塞主线程
+        keepRunning();
+    }
+
+    private void startRealisticStatusUpdates() {
+        statusUpdater = Executors.newSingleThreadScheduledExecutor();
+
+        // 每1秒更新一次状态
+        statusUpdater.scheduleAtFixedRate(() -> {
+            if (running.get()) {
+                updateFuelConsumption(); // 更新油耗
+                updateLocationByDriving(); // 根据行驶状态更新位置
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+
+        System.out.println("[CarSimulator] 车辆状态自动更新已启动");
+    }
+
+    // 根据发动机和空调状态更新油耗
+    private void updateFuelConsumption() {
+        if (engineOn && fuelPercent > 0) {
+            // 基础油耗 + 空调额外油耗
+            float totalConsumption = BASE_FUEL_CONSUMPTION + (acOn ? AC_EXTRA_CONSUMPTION : 0);
+            fuelPercent = Math.max(0, fuelPercent - totalConsumption);
+
+            // 每10秒打印一次油耗变化（避免日志刷屏）
+            if (System.currentTimeMillis() % 10000 < 1000) {
+                System.out.printf("[CarSimulator] 油耗更新: 当前油量=%.1f%%%n", fuelPercent);
+            }
+
+            // 低油量报警（燃油低于15%时触发）
+            if (fuelPercent <= 15 && fuelPercent + totalConsumption > 15) {
+                alertSystem.triggerAlert(CarSimulatorAlert.CarAlertType.LOW_FUEL, "MEDIUM");
+            }
+
+            // 燃油耗尽时自动关闭发动机
+            if (fuelPercent == 0) {
+                stopEngine();
+                System.out.println("[CarSimulator] 燃油耗尽，发动机已自动关闭");
+            }
+        }
+    }
+
+    // 根据发动机运行时间更新位置（仅使用location、engineOn）
+    private void updateLocationByDriving() {
+        if (engineOn) {
+            engineRunningTime++;
+            // 发动机运行30秒后随机更新位置（模拟行驶）
+            if (engineRunningTime % 30 == 0) {
+                String[] locations = {"Street", "Highway", "Parking Lot", "Store", "Garage"};
+                String newLocation = locations[(int)(Math.random() * locations.length)];
+                // 避免与当前位置重复
+                if (!newLocation.equals(location)) {
+                    location = newLocation;
+                    System.out.printf("[CarSimulator] 行驶中，位置更新为: %s%n", location);
+                    reportCurrentStatus(); // 位置变化时立即上报
+                }
+            }
+        } else {
+            engineRunningTime = 0; // 发动机关闭时重置运行时间
+        }
     }
 
     private void initDDS() {
@@ -108,17 +178,7 @@ public class CarSimulator {
             // 仅处理car类型的命令
             if ("car".equalsIgnoreCase(deviceType)) {
                 handleCarCommand(action);
-            } else {
-                System.err.println("[CarSimulator] 未知的设备类型: " + deviceType);
             }
-
-
-            //上报状态的函数，暂时不用
-            // 命令处理后立即上报状态
-            //reportCurrentStatus();
-
-
-
         } catch (Exception e) {
             System.err.println("[CarSimulator] 处理命令时发生错误: " + e.getMessage());
             e.printStackTrace();
@@ -153,18 +213,23 @@ public class CarSimulator {
                 System.out.println("[CarSimulator] 未知命令: " + action);
         }
     }
-// ... existing code ...
 
     private void startEngine() {
         if (fuelPercent <= 0) {
             System.out.println("[CarSimulator] 油量不足，无法启动发动机！");
+            // 触发低油量报警
+            alertSystem.triggerAlert(CarSimulatorAlert.CarAlertType.LOW_FUEL, "HIGH");
             return;
         }
 
         if (!engineOn) {
             engineOn = true;
+            // 重置运行时间
+            engineRunningTime = 0;
             System.out.println("[CarSimulator] 发动机已启动");
             statusPublisher.updateEngineStatus(true);
+            // 状态变化时上报
+            reportCurrentStatus();
         } else {
             System.out.println("[CarSimulator] 发动机已经在运行");
         }
@@ -336,6 +401,19 @@ public class CarSimulator {
         // 关闭DDS连接
         if (ddsParticipant != null) {
             ddsParticipant.close();
+        }
+
+        // 停止状态自动更新调度器
+        if (statusUpdater != null) {
+            statusUpdater.shutdown();
+            try {
+                if (!statusUpdater.awaitTermination(3, TimeUnit.SECONDS)) {
+                    statusUpdater.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                statusUpdater.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
 
         System.out.println("[CarSimulator] 车辆模拟器已关闭");
