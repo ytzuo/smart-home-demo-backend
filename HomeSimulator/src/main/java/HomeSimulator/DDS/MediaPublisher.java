@@ -49,7 +49,7 @@ public class MediaPublisher {
      * @param fileData 文件二进制数据
      * @return 发送是否成功
      */
-    public boolean publishMedia(String deviceId, String deviceType, int mediaType, byte[] fileData) {
+    public boolean publishMedia(String deviceId, String deviceType, int mediaType, byte[] fileData,int alertId) {
         if (writer == null) {
             System.err.println("[MediaPublisher] Media DataWriter 尚未初始化");
             return false;
@@ -72,7 +72,7 @@ public class MediaPublisher {
 
         int totalSize = fileData.length;
         int totalChunks = (int) Math.ceil((double) totalSize / CHUNK_SIZE);
-        int alertId = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
+        alertId = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
 
         System.out.printf("[MediaPublisher] 开始发送媒体: deviceId=%s, deviceType=%s, type=%d, size=%d bytes, chunks=%d\n",
                 deviceId, deviceType, mediaType, totalSize, totalChunks);

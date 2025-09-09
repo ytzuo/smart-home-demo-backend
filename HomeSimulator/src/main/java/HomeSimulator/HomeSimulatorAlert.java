@@ -269,7 +269,7 @@ public class HomeSimulatorAlert {
         this.currentAlertType = type;
         this.alertMessage = message;
         this.alertActive.set(true);
-
+         int alertId = (int) (System.currentTimeMillis() % 1000000);
         System.out.printf("[HomeSimulatorAlert] 触发报警: 类型=%s, 信息=%s%n",
                 type.getValue(), message);
 
@@ -298,8 +298,7 @@ public class HomeSimulatorAlert {
                 deviceId = "ac2";
                 deviceType = "ac";
             }
-// 统一逻辑：先发布警报消息，确保 alert_id 设置正确
-            publishDeviceAlertMessage(deviceId, deviceType, type, message, true);
+
             // 媒体类型：1表示图片
             int mediaType = 1;
 
@@ -308,7 +307,7 @@ public class HomeSimulatorAlert {
             byte[] mediaData = getSampleImageData(type);
 
             // 发送媒体数据
-            HomeSimulator.getInstance().sendMedia(deviceId, "camera", mediaType, mediaData);
+            HomeSimulator.getInstance().sendMedia(deviceId, "camera", mediaType, mediaData, alertId);
             System.out.printf("[HomeSimulatorAlert] 已发送与报警关联的图片，设备ID: %s%n", deviceId);
         } catch (Exception e) {
             // 如果发送媒体失败，不影响报警的正常触发
@@ -697,36 +696,8 @@ public class HomeSimulatorAlert {
                 alert.deviceType = deviceType;
 
                 // 根据报警类型设置对应的alert_id，与手机端匹配
-                int alertId = 4; // 默认设备故障
-                switch (type) {
-                    case FIRE:
-                        alertId = 1;
-                        break;
-                    case INTRUSION:
-                        alertId = 2;
-                        break;
-                    case DEVICE_OFFLINE:
-                        alertId = 3;
-                        break;
-                    case DEVICE_MALFUNCTION:
-                        alertId = 4;
-                        break;
-                    case DEVICE_OVERHEAT:
-                        alertId = 5;
-                        break;
-                    case GAS_LEAK:
-                        alertId = 6;
-                        break;
-                    case WATER_LEAK:
-                        alertId = 7;
-                        break;
-                    case LIGHT_ABNORMAL:
-                        alertId = 4; // 映射为设备故障
-                        break;
-                    case AC_ABNORMAL:
-                        alertId = 4; // 映射为设备故障
-                        break;
-                }
+                int alertId = (int) (System.currentTimeMillis() % 1000000);; // 默认设备故障
+
                 alert.alert_id = alertId;
 
                 alert.level = isActive ? "ALERT" : "INFO";
@@ -779,7 +750,7 @@ public class HomeSimulatorAlert {
         
         // 触发报警
         triggerAlert(alertType, message);
-        
+
         // 直接发布Alert消息到手机端，使用正确的设备ID和类型
         publishDeviceAlertMessage(device.getId(), statusRecord.type, alertType, message, true);
         
@@ -806,14 +777,14 @@ public class HomeSimulatorAlert {
                     device.getId(), statusRecord.type);
         }
     }
-    // 在HomeSimulatorAlert.java中的适当位置添加
-    public void triggerAlertWithMedia(String deviceId, AlertType alertType, byte[] mediaData, int mediaType) {
-        // 触发报警
-        triggerAlert(alertType, deviceId);
-
-        // 发送相关媒体
-        HomeSimulator.getInstance().sendMedia(deviceId, "camera", mediaType, mediaData);
-    }
+//    // 在HomeSimulatorAlert.java中的适当位置添加
+//    public void triggerAlertWithMedia(String deviceId, AlertType alertType, byte[] mediaData, int mediaType) {
+//        // 触发报警
+//        triggerAlert(alertType, deviceId);
+//
+//        // 发送相关媒体
+//        HomeSimulator.getInstance().sendMedia(deviceId, "camera", mediaType, mediaData);
+//    }
     /**
      * 判断报警类型是否为设备相关报警
      * @param type 报警类型

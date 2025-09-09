@@ -160,10 +160,17 @@ public class HomeSimulator {
 
         System.out.println("[HomeSimulator] DDS初始化完成");
     }
-    // 新增：添加发送媒体的公共方法，供其他组件调用
-    public boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData) {
+//    // 新增：添加发送媒体的公共方法，供其他组件调用
+//    public boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData) {
+//        if (mediaPublisher != null) {
+//            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData);
+//        }
+//        return false;
+//    }
+    // 新增：添加支持传递alertId的媒体发送方法
+    public boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {
         if (mediaPublisher != null) {
-            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData);
+            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData, alertId);
         }
         return false;
     }
@@ -529,14 +536,14 @@ public class HomeSimulator {
             // 默认使用light1设备ID和类型
             String deviceId = "light1";
             String deviceType = "light";
-
+            int alertId=(int) (System.currentTimeMillis() % 1000000);
             // 读取图片文件
             byte[] imageData = readImageFile(imagePath);
 
             // 通过mediaPublisher发送图片
             if (mediaPublisher != null) {
                 // 媒体类型：1代表图片
-                boolean result = mediaPublisher.publishMedia(deviceId, deviceType, 1, imageData);
+                boolean result = mediaPublisher.publishMedia(deviceId, deviceType, 1, imageData,alertId);
 
                 if (result) {
                     System.out.println("[HomeSimulator] 图片发送成功！Mobile端应该能够接收到图片数据");
