@@ -259,8 +259,11 @@ public class HomeSimulatorAlert {
     /**
      * 触发报警
      * @param type 报警类型
-     * @param message 报警信息
+     * @param报警信息
      */
+    int return_alertid(AlertType type) {
+        return getAlertIdByType(type);
+    }
     public void triggerAlert(AlertType type, String message) {
         if (type == AlertType.NONE) {
             return;
@@ -269,7 +272,8 @@ public class HomeSimulatorAlert {
         this.currentAlertType = type;
         this.alertMessage = message;
         this.alertActive.set(true);
-         int alertId = (int) (System.currentTimeMillis() % 1000000);
+        // 获取报警类型对应的alertId
+        int alertId = return_alertid(type);
         System.out.printf("[HomeSimulatorAlert] 触发报警: 类型=%s, 信息=%s%n",
                 type.getValue(), message);
 
@@ -679,6 +683,11 @@ public class HomeSimulatorAlert {
         }
     }
 
+    // 新增：根据报警类型获取alertId的辅助方法
+    private int getAlertIdByType(AlertType type) {
+        int alertId = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
+        return alertId;
+    }
     /**
      * 直接发布设备Alert消息到手机端
      * @param deviceId 设备ID
@@ -696,9 +705,9 @@ public class HomeSimulatorAlert {
                 alert.deviceType = deviceType;
 
                 // 根据报警类型设置对应的alert_id，与手机端匹配
-                int alertId = (int) (System.currentTimeMillis() % 1000000);; // 默认设备故障
+                //int alertId = getAlertIdByType(type); // 使用与图片发送相同的alertId // 默认设备故障
 
-                alert.alert_id = alertId;
+                alert.alert_id = return_alertid(type);
 
                 alert.level = isActive ? "ALERT" : "INFO";
                 alert.description = message;
@@ -712,8 +721,8 @@ public class HomeSimulatorAlert {
                 ReturnCode_t result = alertWriter.write(alert, handle);
 
                 if (result == ReturnCode_t.RETCODE_OK) {
-                    System.out.printf("[HomeSimulatorAlert] ✅ 成功发布Alert消息到手机端 - 设备: %s, 类型: %s, 消息: %s, 状态: %s, alert_id: %d, DDS返回码: %s%n", 
-                            deviceId, deviceType, message, isActive ? "激活" : "解除", alertId, result.toString());
+                    System.out.printf("[HomeSimulatorAlert] ✅ 成功发布Alert消息到手机端 - 设备: %s, 类型: %s, 消息: %s, 状态: %s, alert_id: %d, DDS返回码: %s%n",
+                            deviceId, deviceType, message, isActive ? "激活" : "解除", alert.alert_id, result.toString());
                 } else {
                     System.err.printf("[HomeSimulatorAlert] ❌ 发布Alert消息失败 - DDS返回码: %s%n", result.toString());
                 }
@@ -747,7 +756,7 @@ public class HomeSimulatorAlert {
             alertType = AlertType.DEVICE_MALFUNCTION;
             message = String.format("设备 %s 工作异常", device.getName());
         }
-        
+
         // 触发报警
         triggerAlert(alertType, message);
 
@@ -757,7 +766,7 @@ public class HomeSimulatorAlert {
         System.out.printf("[HomeSimulatorAlert] 设备报警: ID=%s, 类型=%s, 消息=%s%n", 
                 device.getId(), statusRecord.type, message);
     }
-    
+
     /**
      * 清除设备报警
      * @param device 设备

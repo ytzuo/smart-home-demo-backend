@@ -72,7 +72,7 @@ public class MediaPublisher {
 
         int totalSize = fileData.length;
         int totalChunks = (int) Math.ceil((double) totalSize / CHUNK_SIZE);
-        alertId = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
+        //alertId = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
 
         System.out.printf("[MediaPublisher] 开始发送媒体: deviceId=%s, deviceType=%s, type=%d, size=%d bytes, chunks=%d\n",
                 deviceId, deviceType, mediaType, totalSize, totalChunks);
@@ -166,15 +166,16 @@ public class MediaPublisher {
             // 发送数据
             ReturnCode_t rtn = writer.write(media, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (rtn == ReturnCode_t.RETCODE_OK) {
-                System.out.printf("[MediaPublisher] 已发送块: #%d/%d, size=%d bytes\n",
-                        chunkSeq + 1, totalChunks, currentChunkSize);
+                System.out.printf("[MediaPublisher] 已发送块: #%d/%d, size=%d bytes, alertId: %d\n",
+                        chunkSeq + 1, totalChunks, currentChunkSize, alertId);
             } else {
                 System.err.printf("[MediaPublisher] 发送块 #%d 失败, 返回码: %s\n", chunkSeq, rtn);
                 return false;
             }
         }
 
-        System.out.println("[MediaPublisher] 媒体发送完成");
+        System.out.printf("[MediaPublisher] 媒体发送完成 - deviceId: %s, deviceType: %s, alertId: %d\n",
+                deviceId, deviceType, alertId);
         return true;
     }
 }
