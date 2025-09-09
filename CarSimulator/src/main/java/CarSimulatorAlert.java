@@ -32,7 +32,9 @@ public class CarSimulatorAlert {
     private Topic alertMediaTopic;
     // 车辆状态监控
     private CarSimulator carSimulator;
-    
+    // 新增：存储当前报警ID的成员变量
+    private int alert_id;
+
     public enum CarAlertType {
             LOW_FUEL(1, "燃油不足"),
             ENGINE_OVERHEAT(2, "发动机过热"),
@@ -54,7 +56,15 @@ public class CarSimulatorAlert {
             return description;
         }
     }
-    
+    // 添加获取当前alertId的方法
+    int return_alertid() {
+        return this.alert_id;
+    }
+    // 新增：根据报警类型获取alertId的辅助方法
+    private void getAlertIdByType(CarAlertType type) {
+        this.alert_id = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
+        System.out.printf("[CarSimulatorAlert] 生成报警ID: %d, 类型: %s\n", this.alert_id, type.getDescription());
+    }
     public CarSimulatorAlert() {
         this.alert = new Alert();
         this.activeAlerts = new HashSet<>();
@@ -202,10 +212,13 @@ public class CarSimulatorAlert {
         }
         
         try {
+            // 生成报警ID
+            getAlertIdByType(alertType);
+            int alertId = this.alert_id;
             // 填充报警信息
             alert.deviceId = "car_001";
             alert.deviceType = "car";
-            alert.alert_id = alertType.getAlertId();
+            alert.alert_id = alertId;
             alert.level = "ALERT"; // 中等级别
             alert.description = message;
             alert.timeStamp = getCurrentTimeStamp();
@@ -216,6 +229,7 @@ public class CarSimulatorAlert {
             
             System.out.printf("[CarSimulatorAlert] 报警已发送: %s - %s%n", 
                 alertType.getDescription(), message);
+            System.out.printf("[CarSimulatorAlert] 🔢  生成报警ID: %d, this.alert_id: %d%n", alertId, this.alert_id);
             // 新增：发送报警的同时发送图片
             try {
                 String deviceId = "car_001";
@@ -227,7 +241,7 @@ public class CarSimulatorAlert {
                 byte[] mediaData = getSampleImageData(alertType);
 
                 // 发送媒体数据
-                sendMedia(deviceId, deviceType, mediaType, mediaData, alertType.getAlertId());
+                sendMedia(deviceId, deviceType, mediaType, mediaData, alertId);
             } catch (Exception e) {
                 // 如果发送媒体失败，不影响报警的正常触发
                 System.err.println("[CarSimulatorAlert] 发送媒体数据失败: " + e.getMessage());
@@ -241,7 +255,7 @@ public class CarSimulatorAlert {
     // 新增：发送媒体数据的方法
     private boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {
         if (mediaPublisher != null) {
-            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData);
+            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData, alertId);
         }
         return false;
     }
@@ -304,6 +318,8 @@ public class CarSimulatorAlert {
 
         if (typeToClear != null && activeAlerts.contains(typeToClear)) {
             try {
+                // 生成新的alertId用于清除报警消息
+                getAlertIdByType(typeToClear);
                 alert.deviceId = "car_001";
                 alert.deviceType = "car";
                 alert.alert_id = alertId;
