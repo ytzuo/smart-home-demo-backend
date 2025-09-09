@@ -4,9 +4,7 @@ import IDL.AlertDataWriter;
 import IDL.AlertTypeSupport;
 import com.zrdds.infrastructure.*;
 import com.zrdds.publication.DataWriterQos;
-import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.Executors;
