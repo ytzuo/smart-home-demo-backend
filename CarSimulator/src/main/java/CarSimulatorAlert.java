@@ -1,6 +1,7 @@
 import CarSimulator.DDS.DdsParticipant;
 import IDL.Alert;
 import IDL.AlertDataWriter;
+import IDL.AlertMediaTypeSupport;
 import IDL.AlertTypeSupport;
 import com.zrdds.infrastructure.*;
 import com.zrdds.publication.DataWriterQos;
@@ -12,17 +13,23 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.HashSet;
 import java.util.Set;
+import java.io.File;
+import java.io.FileInputStream;
 
 public class CarSimulatorAlert {
     private static final String ALERT_TOPIC = "CarAlert";
-    
+    // 添加ALERT_MEDIA_TOPIC常量定义
+    private static final String ALERT_MEDIA_TOPIC = "CarAlertMedia";
     private AlertDataWriter alertWriter;
     private DdsParticipant ddsParticipant;
     private Alert alert;
     private boolean isRunning = false;
     private ScheduledExecutorService alertChecker;
     private Set<CarAlertType> activeAlerts;
-    
+
+    // 新增：媒体发布器相关成员变量
+    private MediaPublisher mediaPublisher;
+    private Topic alertMediaTopic;
     // 车辆状态监控
     private CarSimulator carSimulator;
     
@@ -81,10 +88,39 @@ public class CarSimulatorAlert {
             System.err.println("[CarSimulatorAlert] 创建AlertDataWriter失败");
             return;
         }
-        
+
+        // 新增：初始化媒体发布器
+        initializeMediaPublisher();
+
         System.out.println("[CarSimulatorAlert] 车辆报警系统初始化完成");
     }
-    
+
+    // 新增：初始化媒体发布器
+    private void initializeMediaPublisher() {
+        try {
+            // 注册AlertMedia类型
+            AlertMediaTypeSupport.get_instance().register_type(
+                    ddsParticipant.getDomainParticipant(), "AlertMedia");
+
+            // 创建AlertMedia主题
+            alertMediaTopic = ddsParticipant.createTopic(
+                    ALERT_MEDIA_TOPIC, AlertMediaTypeSupport.get_instance());
+
+            // 初始化MediaPublisher
+            mediaPublisher = new MediaPublisher();
+            boolean started = mediaPublisher.start(ddsParticipant.getPublisher(), alertMediaTopic);
+
+            if (started) {
+                System.out.println("[CarSimulatorAlert] 媒体发布器初始化成功");
+            } else {
+                System.err.println("[CarSimulatorAlert] 媒体发布器初始化失败");
+            }
+        } catch (Exception e) {
+            System.err.println("[CarSimulatorAlert] 初始化媒体发布器时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void startMonitoring() {
         if (isRunning) {
             return;
@@ -180,12 +216,79 @@ public class CarSimulatorAlert {
             
             System.out.printf("[CarSimulatorAlert] 报警已发送: %s - %s%n", 
                 alertType.getDescription(), message);
-                
+            // 新增：发送报警的同时发送图片
+            try {
+                String deviceId = "car_001";
+                String deviceType = "car";
+                // 媒体类型：1表示图片
+                int mediaType = 1;
+
+                // 获取与报警类型相关的图片数据
+                byte[] mediaData = getSampleImageData(alertType);
+
+                // 发送媒体数据
+                sendMedia(deviceId, deviceType, mediaType, mediaData, alertType.getAlertId());
+            } catch (Exception e) {
+                // 如果发送媒体失败，不影响报警的正常触发
+                System.err.println("[CarSimulatorAlert] 发送媒体数据失败: " + e.getMessage());
+            }
+
         } catch (Exception e) {
             System.err.println("[CarSimulatorAlert] 发送报警失败: " + e.getMessage());
         }
     }
-    
+
+    // 新增：发送媒体数据的方法
+    private boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {
+        if (mediaPublisher != null) {
+            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData);
+        }
+        return false;
+    }
+
+    // 新增：获取示例图片数据
+    private byte[] getSampleImageData(CarAlertType alertType) {
+        try {
+            // 根据报警类型获取对应的图片路径
+            String sampleImagePath = getImagePathForAlertType(alertType);
+            File imageFile = new File(sampleImagePath);
+
+            if (imageFile.exists() && imageFile.isFile()) {
+                byte[] data = new byte[(int) imageFile.length()];
+                try (FileInputStream fis = new FileInputStream(imageFile)) {
+                    fis.read(data);
+                }
+                return data;
+            } else {
+                // 如果文件不存在，返回一个默认的图片数据
+                System.out.println("[CarSimulatorAlert] 未找到图片文件: " + sampleImagePath);
+                // 返回一个简单的示例数据（PNG文件头）
+                return new byte[]{(byte) 0x89, (byte) 0x50, (byte) 0x4E, (byte) 0x47, (byte) 0x0D, (byte) 0x0A, (byte) 0x1A, (byte) 0x0A};
+            }
+        } catch (Exception e) {
+            System.err.println("[CarSimulatorAlert] 获取图片数据失败: " + e.getMessage());
+            return new byte[0];
+        }
+    }
+
+    // 新增：根据报警类型获取对应的图片路径
+    private String getImagePathForAlertType(CarAlertType alertType) {
+        // 这里只是一个示例实现，实际应用中应该根据不同的报警类型返回不同的图片路径
+        // 请根据实际环境修改图片路径
+        String basePath = "C:\\Users\\86183\\Pictures\\";
+
+        switch (alertType) {
+            case LOW_FUEL:
+                return basePath + "90.jpg";
+            case ENGINE_OVERHEAT:
+                return basePath + "90.jpg";
+            case DOOR_UNLOCKED:
+                return basePath + "90.jpg";
+            default:
+                return basePath + "90.jpg";
+        }
+    }
+
     public void clearAlert(int alertId) {
         if (alertWriter == null) {
             return;
