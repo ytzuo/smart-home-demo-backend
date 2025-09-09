@@ -34,6 +34,7 @@ import java.util.Set;
  * 负责监测和发布家庭安全警报
  */
 public class HomeSimulatorAlert {
+    private int alert_id;
     // 报警类型枚举
     public enum AlertType {
         NONE("none"),
@@ -262,7 +263,7 @@ public class HomeSimulatorAlert {
      * @param报警信息
      */
     int return_alertid(AlertType type) {
-        return getAlertIdByType(type);
+        return this.alert_id;
     }
     public void triggerAlert(AlertType type, String message) {
         if (type == AlertType.NONE) {
@@ -273,7 +274,8 @@ public class HomeSimulatorAlert {
         this.alertMessage = message;
         this.alertActive.set(true);
         // 获取报警类型对应的alertId
-        int alertId = return_alertid(type);
+        getAlertIdByType(type);
+        int alertId = this.alert_id;
         System.out.printf("[HomeSimulatorAlert] 触发报警: 类型=%s, 信息=%s%n",
                 type.getValue(), message);
 
@@ -684,9 +686,8 @@ public class HomeSimulatorAlert {
     }
 
     // 新增：根据报警类型获取alertId的辅助方法
-    private int getAlertIdByType(AlertType type) {
-        int alertId = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
-        return alertId;
+    private void getAlertIdByType(AlertType type) {
+        this.alert_id = (int) (System.currentTimeMillis() % 1000000); // 生成唯一报警ID
     }
     /**
      * 直接发布设备Alert消息到手机端
