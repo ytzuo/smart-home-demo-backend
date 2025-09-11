@@ -87,7 +87,7 @@
                     <executable>java</executable>
                     <arguments>
                         <!-- 指定ZRDDS本地库路径（根据实际安装目录调整） -->
-                        <argument>-Djava.library.path=C:\Program Files (x86)\ZRDDS\ZRDDS-2.4.4\lib</argument>
+                        <argument>-Djava.library.path=${project.basedir}/../lib</argument>
                         <argument>-classpath</argument>
                         <classpath/>
                         <argument>AppSimulator.MobileAppSimulator</argument> <!-- 主类全路径 -->

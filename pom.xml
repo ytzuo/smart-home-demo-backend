@@ -72,7 +72,7 @@
           <systemProperties>
             <systemProperty>
               <key>java.library.path</key>
-              <value>C:\Users\30103\Desktop\summer school\smart-home-demo-backend\lib</value>
+              <value>${project.basedir}/../lib</value>
             </systemProperty>
           </systemProperties>
         </configuration>
