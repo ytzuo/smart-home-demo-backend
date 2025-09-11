@@ -5,55 +5,40 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 新增：继承根模块，统一版本和依赖管理 -->
-    <parent>
-        <groupId>org.example</groupId>
-        <artifactId>SmartHomeDemoBackend</artifactId>
-        <version>1.0-SNAPSHOT</version>
-    </parent>
-
-    <!-- 移除独立 groupId，继承父模块的 org.example -->
-    <artifactId>AppTest</artifactId>
+    <groupId>com.smartdemo</groupId>
+    <artifactId>app-test</artifactId>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>手机App测试模块</name>
     <description>模拟手机App通过DDS与车辆通信</description>
 
     <properties>
-        <!-- 修正：Java版本统一为17（与编译器插件配置一致） -->
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
-        <!-- DDS依赖（保持现有配置） -->
+        <!-- DDS依赖 -->
         <dependency>
             <groupId>com.zrdds</groupId>
             <artifactId>zrdds-java</artifactId>
             <version>1.0.0</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/../lib/ZRDDS.jar</systemPath>
+            <systemPath>${project.basedir}/../lib/zrdds-java.jar</systemPath>
         </dependency>
-
-        <!-- 车辆模块依赖的 groupId 为 org.example（与CarSimulator一致） -->
+        
+        <!-- 车辆模块依赖 -->
         <dependency>
-            <groupId>org.example</groupId>
-            <artifactId>CarSimulator</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-
-        <!-- 依赖IDL模块（DDS数据类型定义，与Home/Car模块保持一致） -->
-        <dependency>
-            <groupId>org.example</groupId>
-            <artifactId>IDL</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>com.smartdemo</groupId>
+            <artifactId>car-simulator</artifactId>
+            <version>1.0.0</version>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- 编译器插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -63,8 +48,7 @@
                     <target>17</target>
                 </configuration>
             </plugin>
-
-            <!-- 打包插件（保持不变，指定主类） -->
+            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -75,23 +59,6 @@
                             <mainClass>AppSimulator.MobileAppSimulator</mainClass>
                         </manifest>
                     </archive>
-                </configuration>
-            </plugin>
-
-            <!-- 新增：exec-maven-plugin，用于指定JVM参数启动程序 -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.1</version>
-                <configuration>
-                    <executable>java</executable>
-                    <arguments>
-                        <!-- 指定ZRDDS本地库路径（根据实际安装目录调整） -->
-                        <argument>-Djava.library.path=C:\Program Files (x86)\ZRDDS\ZRDDS-2.4.4\lib</argument>
-                        <argument>-classpath</argument>
-                        <classpath/>
-                        <argument>AppSimulator.MobileAppSimulator</argument> <!-- 主类全路径 -->
-                    </arguments>
                 </configuration>
             </plugin>
         </plugins>
