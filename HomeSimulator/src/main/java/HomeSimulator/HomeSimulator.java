@@ -49,7 +49,7 @@ public class HomeSimulator {
     private Topic alertMediaTopic;
     // 新增：Presence定时发送调度器
     private ScheduledExecutorService presenceScheduler;
-
+//NB
     public HomeSimulator() {
         loadLibrary();
         this.running = new AtomicBoolean(false);
