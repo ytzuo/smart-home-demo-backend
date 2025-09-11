@@ -697,6 +697,7 @@ public class HomeSimulatorAlert {
      * @param message 报警消息
      * @param isActive 是否激活报警
      */
+    
     private void publishDeviceAlertMessage(String deviceId, String deviceType, AlertType type, String message, boolean isActive) {
         if (alertWriter != null) {
             try {

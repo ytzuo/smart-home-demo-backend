@@ -24,6 +24,9 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -44,6 +47,8 @@ public class HomeSimulator {
     // 在类的成员变量部分添加
     private MediaPublisher mediaPublisher;
     private Topic alertMediaTopic;
+    // 新增：Presence定时发送调度器
+    private ScheduledExecutorService presenceScheduler;
 
     public HomeSimulator() {
         loadLibrary();
@@ -93,7 +98,10 @@ public class HomeSimulator {
 
         // 4. 发送一次Presence状态
         publishPresenceStatus();
-
+// ======== 新增：启动Presence定时发送任务（每30秒一次） ========
+        presenceScheduler = Executors.newSingleThreadScheduledExecutor();
+        presenceScheduler.scheduleAtFixedRate(
+                this::publishPresenceStatus, 10, 10, TimeUnit.SECONDS); // 首次延迟30秒，之后每30秒执行
         System.out.println("[HomeSimulator] 家居模拟器启动完成");
         System.out.println("[HomeSimulator] 使用控制台命令触发报警: lt1(灯具状态异常), lh1(灯具过热), at1(空调温度异常), ap1(空调性能异常)");
 
@@ -664,6 +672,10 @@ public class HomeSimulator {
 
         if (ddsParticipant != null) {
             ddsParticipant.close();
+        }
+        // ======== 新增：停止Presence定时发送任务 ========
+        if (presenceScheduler != null) {
+            presenceScheduler.shutdownNow();
         }
 
         System.out.println("[HomeSimulator] 家居模拟器已关闭");
