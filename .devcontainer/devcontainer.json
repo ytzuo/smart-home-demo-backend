@@ -12,5 +12,7 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "cd HomeSimulator && mvn clean package -DskipTests"
+  "postCreateCommand": "mvn clean package -DskipTests"
 }
+
+
