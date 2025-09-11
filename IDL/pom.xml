@@ -22,7 +22,7 @@
             <artifactId>zrdds-java</artifactId>
             <version>1.0.0</version>
             <scope>system</scope>
-            <systemPath>C:/Users/30103/Desktop/summer school/smart-home-demo-backend/lib/ZRDDS.jar</systemPath>
+            <systemPath>${project.basedir}/../lib/ZRDDS.jar</systemPath>
         </dependency>
     </dependencies>
 </project>
