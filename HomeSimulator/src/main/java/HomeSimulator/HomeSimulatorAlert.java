@@ -13,7 +13,6 @@ import IDL.HomeStatus;
 import IDL.HomeStatusDataWriter;
 import IDL.Alert;
 import IDL.AlertDataWriter;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;

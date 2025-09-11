@@ -3,21 +3,15 @@ package HomeSimulator;
 import HomeSimulator.DDS.DdsParticipant;
 import HomeSimulator.DDS.CommandSubscriber;
 import HomeSimulator.furniture.*;
-import HomeSimulator.HomeSimulatorAlert.AlertType;
+import IDL.*;
+import com.zrdds.topic.TypeSupport;
 import com.zrdds.infrastructure.*;
-import IDL.Command;
-import IDL.CommandTypeSupport;
-import IDL.HomeStatusTypeSupport;
-import IDL.AlertTypeSupport;
 import com.zrdds.publication.DataWriterQos;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
-import IDL.Presence;
-import IDL.PresenceTypeSupport;
-import IDL.PresenceDataWriter;
 import HomeSimulator.DDS.MediaPublisher;
-import IDL.AlertMediaTypeSupport;
-
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -33,14 +27,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * HomeSimulator主控制器
  * 协调DDS通信、家具管理和状态上报等各模块工作
  */
+@SpringBootApplication
 public class HomeSimulator {
     private static boolean hasLoad = false;
-    private static HomeSimulator instance; // 单例实例
-
+    private static HomeSimulator instance;
     private DdsParticipant ddsParticipant;
     private CommandSubscriber commandSubscriber;
-    private FurnitureManager furnitureManager; // 家具管理器（需DDS资源初始化）
-    private HomeSimulatorAlert alertSystem;    // 报警系统
+    private FurnitureManager furnitureManager; // 家具管理器
+    private HomeSimulatorAlert alertSystem;// 报警系统
     private AtomicBoolean running;
     private PresenceDataWriter presenceDataWriter;
     private Topic presenceTopic;
@@ -49,6 +43,13 @@ public class HomeSimulator {
     private Topic alertMediaTopic;
     // 新增：Presence定时发送调度器
     private ScheduledExecutorService presenceScheduler;
+
+    public static void main(String[] args) {
+        System.out.println("[HomeSimulator] 启动家居模拟器...");
+        HomeSimulator simulator = new HomeSimulator();
+        simulator.start();
+        SpringApplication.run(HomeSimulator.class, args);
+    }
 
     public HomeSimulator() {
         loadLibrary();
@@ -168,13 +169,7 @@ public class HomeSimulator {
 
         System.out.println("[HomeSimulator] DDS初始化完成");
     }
-//    // 新增：添加发送媒体的公共方法，供其他组件调用
-//    public boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData) {
-//        if (mediaPublisher != null) {
-//            return mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData);
-//        }
-//        return false;
-//    }
+
     // 新增：添加支持传递alertId的媒体发送方法
     public boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {
         if (mediaPublisher != null) {
@@ -681,9 +676,4 @@ public class HomeSimulator {
         System.out.println("[HomeSimulator] 家居模拟器已关闭");
     }
 
-    public static void main(String[] args) {
-        System.out.println("[HomeSimulator] 启动家居模拟器...");
-        HomeSimulator simulator = new HomeSimulator();
-        simulator.start();
-    }
 }

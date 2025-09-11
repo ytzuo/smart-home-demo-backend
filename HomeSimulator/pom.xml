@@ -1,12 +1,69 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.example</groupId>
         <artifactId>SmartHomeDemoBackend</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
+
     <artifactId>HomeSimulator</artifactId>
-    <name>Archetype - HomeSimulator</name>
-    <url>http://maven.apache.org</url>
+    <packaging>jar</packaging>
+    <name>HomeSimulator</name>
+
+    <dependencies>
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot WebSocket -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>IDL</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- JSON 库（继承自父 POM 里的 dependencyManagement） -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.zrdds</groupId>
+            <artifactId>domain</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <executable>java</executable>
+                    <arguments>
+                        <!-- 设置 ZRDDS 的本地库路径 -->
+                        <argument>-Djava.library.path=C:\Program Files (x86)\ZRDDS\ZRDDS-2.4.4\lib</argument>
+                        <argument>-classpath</argument>
+                        <classpath/>
+                        <!-- ⭐ 修改点：这里要换成 HomeSimulator 的主类全限定名 -->
+                        <argument>HomeSimulator.HomeSimulator</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
