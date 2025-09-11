@@ -56,7 +56,7 @@
                     <executable>java</executable>
                     <arguments>
                         <!-- 设置 ZRDDS 的本地库路径 -->
-                        <argument>-Djava.library.path=${project.basedir}/../lib</argument>
+                        <argument>-Djava.library.path=C:\Program Files (x86)\ZRDDS\ZRDDS-2.4.4\lib</argument>
                         <argument>-classpath</argument>
                         <classpath/>
                         <!-- ⭐ 修改点：这里要换成 HomeSimulator 的主类全限定名 -->

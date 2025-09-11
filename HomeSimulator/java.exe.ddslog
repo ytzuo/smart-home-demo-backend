@@ -31,33 +31,13 @@ LOGINFO: LEVEL(ERROR)
 FUNC: ZRSedp.cpp:ZRSedpAddDiscoveredDataReader(LINE: 5371)
 local writer((0189a8c0)(d4370000)(00000000)(13000003)) match reader((0189a8c0)(f01c0000)(00000000)(10000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
 *******************************************************************
-********************  2025-09-11 16:30:45:922  ********************
+******************  2025-09-11 15:58:49:337  ********************
 LOGINFO: LEVEL(WARNING)
 FUNC: DataWriterImpl.cpp:DataWriterQosCompatibleCheck(LINE: 8596)
-Match Reader (0189a8c0)(5c190000)(00000000)(10000004) failed: Durability incompatible in DataWriter (0189a8c0)(d4370000)(00000000)(13000003) of Topic HomeStatus.
+Match Reader (0189a8c0)(f01c0000)(00000000)(10000004) failed: Durability incompatible in DataWriter (0189a8c0)(ac630000)(00000000)(13000003) of Topic HomeStatus.
 *******************************************************************
-********************  2025-09-11 16:30:45:922  ********************
+********************  2025-09-11 15:58:49:337  ********************
 LOGINFO: LEVEL(ERROR)
 FUNC: ZRSedp.cpp:ZRSedpAddDiscoveredDataReader(LINE: 5371)
-local writer((0189a8c0)(d4370000)(00000000)(13000003)) match reader((0189a8c0)(5c190000)(00000000)(10000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
-*******************************************************************
-********************  2025-09-11 16:44:58:394  ********************
-LOGINFO: LEVEL(WARNING)
-FUNC: DataWriterImpl.cpp:DataWriterQosCompatibleCheck(LINE: 8596)
-Match Reader (0189a8c0)(64110000)(00000000)(10000004) failed: Durability incompatible in DataWriter (0189a8c0)(d4370000)(00000000)(13000003) of Topic HomeStatus.
-*******************************************************************
-********************  2025-09-11 16:44:58:394  ********************
-LOGINFO: LEVEL(ERROR)
-FUNC: ZRSedp.cpp:ZRSedpAddDiscoveredDataReader(LINE: 5371)
-local writer((0189a8c0)(d4370000)(00000000)(13000003)) match reader((0189a8c0)(64110000)(00000000)(10000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
-*******************************************************************
-******************  2025-09-11 16:44:58:394  ********************
-LOGINFO: LEVEL(WARNING)
-FUNC: DataWriterImpl.cpp:DataWriterQosCompatibleCheck(LINE: 8596)
-Match Reader (0189a8c0)(64110000)(00000000)(10000004) failed: Durability incompatible in DataWriter (0189a8c0)(ac630000)(00000000)(13000003) of Topic HomeStatus.
-*******************************************************************
-********************  2025-09-11 16:44:58:394  ********************
-LOGINFO: LEVEL(ERROR)
-FUNC: ZRSedp.cpp:ZRSedpAddDiscoveredDataReader(LINE: 5371)
-local writer((0189a8c0)(ac630000)(00000000)(13000003)) match reader((0189a8c0)(64110000)(00000000)(10000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
+local writer((0189a8c0)(ac630000)(00000000)(13000003)) match reader((0189a8c0)(f01c0000)(00000000)(10000004)) topicName(HomeStatus) typeName(HomeStatus) failed(-101).
 *******************************************************************
