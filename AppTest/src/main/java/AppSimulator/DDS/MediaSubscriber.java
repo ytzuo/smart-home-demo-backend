@@ -3,7 +3,6 @@ package AppSimulator.DDS;
 import IDL.AlertMedia;
 import IDL.AlertMediaDataReader;
 import IDL.AlertMediaSeq;
-import com.zrdds.infrastructure.InstanceHandle_t;
 import com.zrdds.infrastructure.LivelinessChangedStatus;
 import com.zrdds.infrastructure.SampleInfo;
 import com.zrdds.infrastructure.SampleInfoSeq;
