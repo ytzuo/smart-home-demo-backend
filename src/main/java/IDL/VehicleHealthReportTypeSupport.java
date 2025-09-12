@@ -99,11 +99,11 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
     }
 
     public int get_max_sizeI(){
-        return 134412;
+        return 0xffffffff;
     }
 
     public int get_max_key_sizeI(){
-        return 134412;
+        return 0xffffffff;
     }
 
     public boolean has_keyI(){
@@ -299,7 +299,7 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("SmartDemo03.VehicleHealthReport");
+        s_typeCode = factory.create_struct_TC("VehicleHealthReport");
         if (s_typeCode == null){
             System.out.println("create struct VehicleHealthReport typecode failed.");
             return s_typeCode;
@@ -308,7 +308,7 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
         TypeCodeImpl memberTc = new TypeCodeImpl();
         TypeCodeImpl eleTc = new TypeCodeImpl();
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member vehicleId TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -330,10 +330,10 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc != null)
         {
-            memberTc = factory.create_sequence_TC(255, memberTc);
+            memberTc = factory.create_sequence_TC(0xffffffff, memberTc);
         }
         if (memberTc == null){
             System.out.println("Get Member componentTypes TypeCode failed.");
@@ -356,10 +356,10 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc != null)
         {
-            memberTc = factory.create_sequence_TC(255, memberTc);
+            memberTc = factory.create_sequence_TC(0xffffffff, memberTc);
         }
         if (memberTc == null){
             System.out.println("Get Member componentStatuses TypeCode failed.");
@@ -385,7 +385,7 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
         memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_FLOAT);
         if (memberTc != null)
         {
-            memberTc = factory.create_sequence_TC(255, memberTc);
+            memberTc = factory.create_sequence_TC(0xffffffff, memberTc);
         }
         if (memberTc == null){
             System.out.println("Get Member metrics TypeCode failed.");
@@ -408,7 +408,7 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member nextMaintenance TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -430,7 +430,7 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member timeStamp TypeCode failed.");
             factory.delete_TC(s_typeCode);
