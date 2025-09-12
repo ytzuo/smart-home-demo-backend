@@ -3,7 +3,12 @@ package AppSimulator;
 import AppSimulator.DDS.*;
 import IDL.*;
 import com.zrdds.topic.Topic;
-// 在类的顶部导入必要的包
+import IDL.EnergyReportTypeSupport;
+import IDL.VehicleHealthReportTypeSupport;
+import AppSimulator.DDS.EnergyReportSubscriber;
+import AppSimulator.DDS.VehicleHealthReportSubscriber;
+import IDL.EnergyReport;
+import IDL.VehicleHealthReport;
 import AppSimulator.DDS.MediaSubscriber;
 import IDL.AlertMediaTypeSupport;
 import java.util.Scanner;
@@ -17,6 +22,11 @@ public class MobileAppSimulator {
     private AlertSubscriber alertSubscriber;
     private AlertSubscriber carAlertSubscriber;
     private final AtomicBoolean running;
+    //能耗/车辆健康报告订阅器及数据缓存
+    private EnergyReportSubscriber energyReportSubscriber;
+    private VehicleHealthReportSubscriber vehicleHealthSubscriber;
+    private EnergyReport latestEnergyReport; // 缓存最新能耗数据
+    private VehicleHealthReport latestVehicleHealthReport; // 缓存最新车辆健康数据
 
     public MobileAppSimulator() {
         loadLibrary();
@@ -35,6 +45,10 @@ public class MobileAppSimulator {
         AlertMediaTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "AlertMedia");
         // 添加Presence类型注册
         PresenceTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Presence");
+        // 注册能耗报告和车辆健康报告类型
+        EnergyReportTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "EnergyReport");
+        VehicleHealthReportTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleHealthReport");
+
         // 创建Topic
         Topic commandTopic = participant.createTopic("Command", CommandTypeSupport.get_instance());
         Topic homeStatusTopic = participant.createTopic("HomeStatus", HomeStatusTypeSupport.get_instance());
@@ -44,6 +58,9 @@ public class MobileAppSimulator {
         // 新增：创建AlertMedia Topic
         Topic alertMediaTopic = participant.createTopic(
                 "AlertMedia", AlertMediaTypeSupport.get_instance());
+        // 新增：创建能耗报告和车辆健康报告 Topic
+        Topic energyReportTopic = participant.createTopic("EnergyReport", EnergyReportTypeSupport.get_instance());
+        Topic vehicleHealthTopic = participant.createTopic("VehicleHealthReport", VehicleHealthReportTypeSupport.get_instance());
 
         // 初始化Publisher和Subscriber
         commandPublisher = new CommandPublisher();
@@ -70,11 +87,29 @@ public class MobileAppSimulator {
             System.err.println("车辆报警监听初始化失败");
         }
 
-// 新增：初始化MediaSubscriber
+        // 新增：初始化MediaSubscriber
         mediaSubscriber = new MediaSubscriber();
         mediaSubscriber.start(
                participant.getSubscriber(),
                 alertMediaTopic);
+        // 新增：初始化能耗报告订阅器
+        energyReportSubscriber = new EnergyReportSubscriber();
+        if (energyReportSubscriber.start(participant.getSubscriber(), energyReportTopic)) {
+            System.out.println("能耗报告监听已启动");
+            // 设置数据更新回调（缓存最新报告）
+            energyReportSubscriber.setDataListener(report -> latestEnergyReport = report);
+        } else {
+            System.err.println("能耗报告监听初始化失败");
+        }
+
+        // 新增：初始化车辆健康报告订阅器
+        vehicleHealthSubscriber = new VehicleHealthReportSubscriber();
+        if (vehicleHealthSubscriber.start(participant.getSubscriber(), vehicleHealthTopic)) {
+            System.out.println("车辆健康报告监听已启动");
+            vehicleHealthSubscriber.setDataListener(report -> latestVehicleHealthReport = report);
+        } else {
+            System.err.println("车辆健康报告监听初始化失败");
+        }
         System.out.println("DDS 初始化完成");
     }
 
@@ -116,6 +151,7 @@ public class MobileAppSimulator {
         System.out.println(" r. (refuel)");
         System.out.println(" ac-on.  (ac_on)");
         System.out.println(" ac-off. (ac_off)");
+        System.out.println(" e. 查看健康报告");
         System.out.print("请输入车辆命令> ");
         String action = scanner.nextLine();
         //sendCommand("car", action);
@@ -142,11 +178,32 @@ public class MobileAppSimulator {
                 sendCommand("car", "ac_off");
                 break;
             case "e":
-                System.out.println("正在刷新车辆状态...");
+                displayVehicleHealthReport();
                 break;  // 状态会通过DDS自动更新
             default:
                 System.out.println("无效命令");
         }
+    }
+
+    // 新增：车辆健康报告展示方法
+    private void displayVehicleHealthReport() {
+        if (latestVehicleHealthReport == null) {
+            System.out.println("暂无车辆健康数据，请稍后重试");
+            return;
+        }
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("🚗 车辆健康诊断报告");
+        System.out.println("时间: " + latestVehicleHealthReport.timeStamp);
+        System.out.println("车辆ID: " + latestVehicleHealthReport.vehicleId);
+        System.out.println("下次保养: " + latestVehicleHealthReport.nextMaintenance);
+        System.out.println("\n部件状态:");
+        for (int i = 0; i < latestVehicleHealthReport.componentTypes.length(); i++) {
+            System.out.printf("• %s: %s (指标: %.2f)\n",
+                    latestVehicleHealthReport.componentTypes.get_at(i),
+                    latestVehicleHealthReport.componentStatuses.get_at(i),
+                    latestVehicleHealthReport.metrics.get_at(i));
+        }
+        System.out.println("=".repeat(50) + "\n");
     }
 
     private void handleHomeCommands(Scanner scanner) {
@@ -155,6 +212,7 @@ public class MobileAppSimulator {
         System.out.println(" b. 空调控制 (进入子菜单)");
         // 添加获取所有设备状态的选项
         System.out.println(" c. 获取所有设备状态");
+        System.out.println(" d. 查看能耗报告");
         System.out.print("请输入家居命令> ");
         String input = scanner.nextLine().trim();
 
@@ -170,10 +228,30 @@ public class MobileAppSimulator {
                 System.out.println("正在请求所有家居设备状态...");
                 sendAllStatusRequest();
                 break;
+            case "d":
+                displayEnergyReport();
+                break;
             default:
                 System.out.println("无效命令，请重新输入");
         }
     }
+
+    // 能耗报告展示方法
+    private void displayEnergyReport() {
+        if (latestEnergyReport == null) {
+            System.out.println("暂无能耗数据，请稍后重试");
+            return;
+        }
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("🏠 家居能耗分析报告");
+        System.out.println("时间: " + latestEnergyReport.timeStamp);
+        System.out.println("设备: " + latestEnergyReport.deviceId + " (" + latestEnergyReport.deviceType + ")");
+        System.out.println("当前功率: " + latestEnergyReport.currentPower + "W");
+        System.out.println("当日能耗: " + String.format("%.2f", latestEnergyReport.dailyConsumption) + "kWh");
+        System.out.println("本周能耗: " + String.format("%.2f", latestEnergyReport.weeklyConsumption) + "kWh");
+        System.out.println("=".repeat(50) + "\n");
+    }
+
     // 新增：发送获取所有设备状态的请求
     private void sendAllStatusRequest() {
         // 向HomeSimulator发送请求所有状态的命令
