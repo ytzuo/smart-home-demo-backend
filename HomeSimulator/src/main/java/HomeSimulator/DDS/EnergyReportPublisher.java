@@ -152,6 +152,13 @@ public class EnergyReportPublisher {
             report.dailyConsumption = dailyConsumption;
             report.weeklyConsumption = weeklyConsumption;
             report.timeStamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            // 新增：将数据添加到历史缓存
+            EnergyDataHistory.getInstance().addEnergyData(
+                    report.deviceId,
+                    report.deviceType,
+                    report.currentPower,
+                    report.dailyConsumption,
+                    report.weeklyConsumption);
             // 发布数据
             ReturnCode_t rtn = writer.write(report, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (rtn == ReturnCode_t.RETCODE_OK) {

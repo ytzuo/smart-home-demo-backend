@@ -15,6 +15,12 @@
       <artifactId>json</artifactId>
       <version>20231013</version> <!-- 稳定版本 -->
     </dependency>
+    <!-- 在pom.xml中添加 -->
+    <dependency>
+      <groupId>org.jfree</groupId>
+      <artifactId>jfreechart</artifactId>
+      <version>1.5.3</version>
+    </dependency>
   </dependencies>
 
   <!-- 新增：指定Java编译版本（解决发行版本5问题） -->
