@@ -19,7 +19,7 @@ import java.io.FileInputStream;
 public class CarSimulatorAlert {
     private static final String ALERT_TOPIC = "Alert";
     // 添加ALERT_MEDIA_TOPIC常量定义
-    private static final String ALERT_MEDIA_TOPIC = "CarAlertMedia";
+    private static final String ALERT_MEDIA_TOPIC = "AlertMedia";
     private AlertDataWriter alertWriter;
     private DdsParticipant ddsParticipant;
     private Alert alert;
@@ -289,17 +289,17 @@ public class CarSimulatorAlert {
     private String getImagePathForAlertType(CarAlertType alertType) {
         // 这里只是一个示例实现，实际应用中应该根据不同的报警类型返回不同的图片路径
         // 请根据实际环境修改图片路径
-        String basePath = "C:\\Users\\86183\\Pictures\\";
+        String basePath = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
 
         switch (alertType) {
             case LOW_FUEL:
-                return basePath + "90.jpg";
+                return basePath + "testImage.jpg";
             case ENGINE_OVERHEAT:
-                return basePath + "90.jpg";
+                return basePath + "testImage.jpg";
             case DOOR_UNLOCKED:
-                return basePath + "90.jpg";
+                return basePath + "testImage.jpg";
             default:
-                return basePath + "90.jpg";
+                return basePath + "testImage.jpg";
         }
     }
 
