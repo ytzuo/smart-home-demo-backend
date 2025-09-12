@@ -17,7 +17,7 @@ import java.io.File;
 import java.io.FileInputStream;
 
 public class CarSimulatorAlert {
-    private static final String ALERT_TOPIC = "CarAlert";
+    private static final String ALERT_TOPIC = "Alert";
     // 添加ALERT_MEDIA_TOPIC常量定义
     private static final String ALERT_MEDIA_TOPIC = "CarAlertMedia";
     private AlertDataWriter alertWriter;
