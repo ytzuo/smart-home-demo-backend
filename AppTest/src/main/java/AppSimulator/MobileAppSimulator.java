@@ -229,6 +229,7 @@ public class MobileAppSimulator {
         System.out.println(" c. 获取所有设备状态");
         System.out.println(" d. 查看能耗报告");
         System.out.println(" e. 请求能耗趋势图");
+        System.out.println(" f. 请求原始能耗数据");
         System.out.print("请输入家居命令> ");
         String input = scanner.nextLine().trim();
 
@@ -253,6 +254,12 @@ public class MobileAppSimulator {
                 System.out.println("正在请求设备 " + deviceId + " 的能耗趋势图...");
                 // 发送趋势图请求命令
                 sendCommand("home", "get_energy_trend_" + deviceId);
+                break;
+            case "f":
+                System.out.print("请输入目标设备ID (如light1/ac1): ");
+                String rawDeviceId = scanner.nextLine().trim();
+                System.out.println("正在请求设备 " + rawDeviceId + " 的原始能耗数据...");
+                sendCommand("home", "get_raw_energy_data_" + rawDeviceId);
                 break;
             default:
                 System.out.println("无效命令，请重新输入");
