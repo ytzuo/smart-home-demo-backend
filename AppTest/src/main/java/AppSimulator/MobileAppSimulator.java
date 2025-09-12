@@ -25,9 +25,12 @@ public class MobileAppSimulator {
     //能耗/车辆健康报告订阅器及数据缓存
     private EnergyReportSubscriber energyReportSubscriber;
     private VehicleHealthReportSubscriber vehicleHealthSubscriber;
-    private EnergyReport latestEnergyReport; // 缓存最新能耗数据
-    private VehicleHealthReport latestVehicleHealthReport; // 缓存最新车辆健康数据
-
+    // 缓存最新能耗数据
+    private EnergyReport latestEnergyReport;
+    // 缓存最新车辆健康数据
+    private VehicleHealthReport latestVehicleHealthReport;
+    // 能耗趋势图订阅器
+    private ReportMediaSubscriber reportMediaSubscriber;
     public MobileAppSimulator() {
         loadLibrary();
         running = new AtomicBoolean(true);
@@ -41,8 +44,10 @@ public class MobileAppSimulator {
         HomeStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "HomeStatus");
         VehicleStatusTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleStatus");
         AlertTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Alert");
-        // 新增：注册AlertMedia类型
+        // 注册AlertMedia类型
         AlertMediaTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "AlertMedia");
+        // 注册ReportMedia类型（能耗趋势图专用）
+        IDL.ReportMediaTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "ReportMedia");
         // 添加Presence类型注册
         PresenceTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "Presence");
         // 注册能耗报告和车辆健康报告类型
@@ -58,6 +63,9 @@ public class MobileAppSimulator {
         // 新增：创建AlertMedia Topic
         Topic alertMediaTopic = participant.createTopic(
                 "AlertMedia", AlertMediaTypeSupport.get_instance());
+        // 创建ReportMedia Topic（能耗趋势图专用）
+        Topic reportMediaTopic = participant.createTopic(
+                "ReportMedia", IDL.ReportMediaTypeSupport.get_instance());
         // 新增：创建能耗报告和车辆健康报告 Topic
         Topic energyReportTopic = participant.createTopic("EnergyReport", EnergyReportTypeSupport.get_instance());
         Topic vehicleHealthTopic = participant.createTopic("VehicleHealthReport", VehicleHealthReportTypeSupport.get_instance());
@@ -87,12 +95,19 @@ public class MobileAppSimulator {
             System.err.println("车辆报警监听初始化失败");
         }
 
-        // 新增：初始化MediaSubscriber
+        // 初始化MediaSubscriber
         mediaSubscriber = new MediaSubscriber();
         mediaSubscriber.start(
                participant.getSubscriber(),
                 alertMediaTopic);
-        // 新增：初始化能耗报告订阅器
+        // 初始化能耗趋势图订阅器（ReportMediaSubscriber）
+        reportMediaSubscriber = new ReportMediaSubscriber();
+        reportMediaSubscriber.start(participant.getSubscriber(), reportMediaTopic);
+        // 设置监听器，接收图片接收通知
+        reportMediaSubscriber.setReportMediaListener((deviceId, reportId, imageData) ->
+                System.out.printf("\n📊 能耗趋势图已接收: 设备ID=%s, 保存路径=./received_media/energy_trends/%s.jpg\n",
+                        deviceId, reportId));
+        // 初始化能耗报告订阅器
         energyReportSubscriber = new EnergyReportSubscriber();
         if (energyReportSubscriber.start(participant.getSubscriber(), energyReportTopic)) {
             System.out.println("能耗报告监听已启动");
@@ -213,6 +228,7 @@ public class MobileAppSimulator {
         // 添加获取所有设备状态的选项
         System.out.println(" c. 获取所有设备状态");
         System.out.println(" d. 查看能耗报告");
+        System.out.println(" e. 请求能耗趋势图");
         System.out.print("请输入家居命令> ");
         String input = scanner.nextLine().trim();
 
@@ -230,6 +246,13 @@ public class MobileAppSimulator {
                 break;
             case "d":
                 displayEnergyReport();
+                break;
+            case "e":
+                System.out.print("请输入目标设备ID (如light1/ac1): ");
+                String deviceId = scanner.nextLine().trim();
+                System.out.println("正在请求设备 " + deviceId + " 的能耗趋势图...");
+                // 发送趋势图请求命令
+                sendCommand("home", "get_energy_trend_" + deviceId);
                 break;
             default:
                 System.out.println("无效命令，请重新输入");
