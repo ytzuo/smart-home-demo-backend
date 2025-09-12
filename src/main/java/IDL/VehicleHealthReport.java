@@ -1,6 +1,5 @@
 package IDL;
 
-
 public class VehicleHealthReport{
     public String vehicleId = "";// @ID(0)
     public com.zrdds.infrastructure.StringSeq componentTypes = new com.zrdds.infrastructure.StringSeq();// @ID(1)
@@ -11,9 +10,6 @@ public class VehicleHealthReport{
 
     public VehicleHealthReport(){
 
-        this.componentTypes.maximum(255);
-        this.componentStatuses.maximum(255);
-        this.metrics.maximum(255);
     }
 
     public VehicleHealthReport(VehicleHealthReport other){

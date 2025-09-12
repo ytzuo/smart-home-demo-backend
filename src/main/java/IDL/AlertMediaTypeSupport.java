@@ -78,11 +78,11 @@ public class AlertMediaTypeSupport extends TypeSupport {
     }
 
     public int get_max_sizeI(){
-        return 799;
+        return 0xffffffff;
     }
 
     public int get_max_key_sizeI(){
-        return 799;
+        return 0xffffffff;
     }
 
     public boolean has_keyI(){
@@ -264,7 +264,7 @@ public class AlertMediaTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("SmartDemo03.AlertMedia");
+        s_typeCode = factory.create_struct_TC("AlertMedia");
         if (s_typeCode == null){
             System.out.println("create struct AlertMedia typecode failed.");
             return s_typeCode;
@@ -273,7 +273,7 @@ public class AlertMediaTypeSupport extends TypeSupport {
         TypeCodeImpl memberTc = new TypeCodeImpl();
         TypeCodeImpl eleTc = new TypeCodeImpl();
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member deviceId TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -295,7 +295,7 @@ public class AlertMediaTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member deviceType TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -425,7 +425,7 @@ public class AlertMediaTypeSupport extends TypeSupport {
         memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_UCHAR);
         if (memberTc != null)
         {
-            memberTc = factory.create_sequence_TC(255, memberTc);
+            memberTc = factory.create_sequence_TC(0xffffffff, memberTc);
         }
         if (memberTc == null){
             System.out.println("Get Member chunk TypeCode failed.");
