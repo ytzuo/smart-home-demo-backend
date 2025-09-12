@@ -204,5 +204,9 @@ public class EnergyDataHistory {
         public float getDailyConsumption() { return dailyConsumption; }
         public float getWeeklyConsumption() { return weeklyConsumption; }
         public long getTimestamp() { return timestamp; }
+
+        public float getPowerConsumption() {
+            return currentPower;
+        }
     }
 }
