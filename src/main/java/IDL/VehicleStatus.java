@@ -1,6 +1,5 @@
 package IDL;
 
-
 public class VehicleStatus{
     public boolean engineOn = false;// @ID(0)
     public boolean doorsLocked = false;// @ID(1)

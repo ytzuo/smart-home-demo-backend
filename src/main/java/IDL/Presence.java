@@ -1,6 +1,5 @@
 package IDL;
 
-
 public class Presence{
     public boolean inRange = false;// @ID(0)
     public String deviceId = "";// @ID(1)

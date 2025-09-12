@@ -92,11 +92,11 @@ public class HomeStatusTypeSupport extends TypeSupport {
     }
 
     public int get_max_sizeI(){
-        return 199172;
+        return 0xffffffff;
     }
 
     public int get_max_key_sizeI(){
-        return 199172;
+        return 0xffffffff;
     }
 
     public boolean has_keyI(){
@@ -269,7 +269,7 @@ public class HomeStatusTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("SmartDemo03.HomeStatus");
+        s_typeCode = factory.create_struct_TC("HomeStatus");
         if (s_typeCode == null){
             System.out.println("create struct HomeStatus typecode failed.");
             return s_typeCode;
@@ -278,10 +278,10 @@ public class HomeStatusTypeSupport extends TypeSupport {
         TypeCodeImpl memberTc = new TypeCodeImpl();
         TypeCodeImpl eleTc = new TypeCodeImpl();
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc != null)
         {
-            memberTc = factory.create_sequence_TC(255, memberTc);
+            memberTc = factory.create_sequence_TC(0xffffffff, memberTc);
         }
         if (memberTc == null){
             System.out.println("Get Member deviceIds TypeCode failed.");
@@ -304,10 +304,10 @@ public class HomeStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc != null)
         {
-            memberTc = factory.create_sequence_TC(255, memberTc);
+            memberTc = factory.create_sequence_TC(0xffffffff, memberTc);
         }
         if (memberTc == null){
             System.out.println("Get Member deviceTypes TypeCode failed.");
@@ -330,10 +330,10 @@ public class HomeStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc != null)
         {
-            memberTc = factory.create_sequence_TC(255, memberTc);
+            memberTc = factory.create_sequence_TC(0xffffffff, memberTc);
         }
         if (memberTc == null){
             System.out.println("Get Member deviceStatus TypeCode failed.");
@@ -356,7 +356,7 @@ public class HomeStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member timeStamp TypeCode failed.");
             factory.delete_TC(s_typeCode);

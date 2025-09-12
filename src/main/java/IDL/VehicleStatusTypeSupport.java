@@ -72,11 +72,11 @@ public class VehicleStatusTypeSupport extends TypeSupport {
     }
 
     public int get_max_sizeI(){
-        return 528;
+        return 0xffffffff;
     }
 
     public int get_max_key_sizeI(){
-        return 528;
+        return 0xffffffff;
     }
 
     public boolean has_keyI(){
@@ -215,7 +215,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("SmartDemo03.VehicleStatus");
+        s_typeCode = factory.create_struct_TC("VehicleStatus");
         if (s_typeCode == null){
             System.out.println("create struct VehicleStatus typecode failed.");
             return s_typeCode;
@@ -308,7 +308,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member location TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -330,7 +330,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(255);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
             System.out.println("Get Member timeStamp TypeCode failed.");
             factory.delete_TC(s_typeCode);

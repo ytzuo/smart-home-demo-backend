@@ -1,6 +1,5 @@
 package IDL;
 
-
 public class AlertMedia{
     public String deviceId = "";// @ID(0)
     public String deviceType = "";// @ID(1)
@@ -9,7 +8,7 @@ public class AlertMedia{
     public int total_size = 0;// @ID(4)
     public int chunk_seq = 0;// @ID(5)
     public int chunk_size = 0;// @ID(6)
-    public SmartDemo03.Blob chunk = new SmartDemo03.Blob();// @ID(7)
+    public Blob chunk = new Blob();// @ID(7)
 
     public AlertMedia(){
 
