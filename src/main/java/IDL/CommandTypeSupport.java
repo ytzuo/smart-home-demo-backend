@@ -211,7 +211,7 @@ public class CommandTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("Command");
+        s_typeCode = factory.create_struct_TC("IDL.Command");
         if (s_typeCode == null){
             System.out.println("create struct Command typecode failed.");
             return s_typeCode;

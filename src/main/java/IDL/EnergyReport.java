@@ -1,5 +1,6 @@
 package IDL;
 
+
 public class EnergyReport{
     public String deviceId = "";// @ID(0)
     public String deviceType = "";// @ID(1)

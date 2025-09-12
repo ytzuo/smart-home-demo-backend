@@ -1,5 +1,6 @@
 package IDL;
 
+
 public class HomeStatus{
     public com.zrdds.infrastructure.StringSeq deviceIds = new com.zrdds.infrastructure.StringSeq();// @ID(0)
     public com.zrdds.infrastructure.StringSeq deviceTypes = new com.zrdds.infrastructure.StringSeq();// @ID(1)

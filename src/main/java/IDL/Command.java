@@ -1,5 +1,6 @@
 package IDL;
 
+
 public class Command{
     public String deviceId = "";// @ID(0)
     public String deviceType = "";// @ID(1)

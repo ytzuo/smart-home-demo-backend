@@ -215,7 +215,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("VehicleStatus");
+        s_typeCode = factory.create_struct_TC("IDL.VehicleStatus");
         if (s_typeCode == null){
             System.out.println("create struct VehicleStatus typecode failed.");
             return s_typeCode;

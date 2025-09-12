@@ -220,7 +220,7 @@ public class EnergyReportTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("EnergyReport");
+        s_typeCode = factory.create_struct_TC("IDL.EnergyReport");
         if (s_typeCode == null){
             System.out.println("create struct EnergyReport typecode failed.");
             return s_typeCode;
