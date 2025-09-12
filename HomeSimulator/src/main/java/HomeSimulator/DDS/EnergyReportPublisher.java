@@ -234,5 +234,20 @@ public class EnergyReportPublisher {
 
         System.out.println("[EnergyReportPublisher] 能耗发布器已停止");
     }
+
+    public boolean publishSingleReport(EnergyReport report) {
+        if (writer == null || report == null) {
+            return false;
+        }
+
+        try {
+            ReturnCode_t rtn = writer.write(report, InstanceHandle_t.HANDLE_NIL_NATIVE);
+            return rtn == ReturnCode_t.RETCODE_OK;
+        } catch (Exception e) {
+            System.err.println("[EnergyReportPublisher] 发送单条报告时发生错误: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
 

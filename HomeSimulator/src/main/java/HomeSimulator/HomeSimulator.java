@@ -1,4 +1,5 @@
 package HomeSimulator;
+import IDL.*;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
@@ -17,23 +18,15 @@ import org.jfree.chart.ChartRenderingInfo;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
 import java.util.Date;
 import HomeSimulator.DDS.*;
 import HomeSimulator.furniture.*;
 import HomeSimulator.HomeSimulatorAlert.AlertType;
 import com.zrdds.infrastructure.*;
-import IDL.Command;
-import IDL.CommandTypeSupport;
-import IDL.HomeStatusTypeSupport;
-import IDL.AlertTypeSupport;
 import com.zrdds.publication.DataWriterQos;
 import com.zrdds.publication.Publisher;
 import com.zrdds.topic.Topic;
-import IDL.Presence;
-import IDL.PresenceTypeSupport;
-import IDL.PresenceDataWriter;
-import IDL.AlertMediaTypeSupport;
-import IDL.EnergyReportTypeSupport;
 
 import javax.imageio.ImageIO;
 import java.io.ByteArrayOutputStream;
@@ -302,6 +295,13 @@ public class HomeSimulator {
                 handleEnergyTrendRequest(deviceId);
                 return;
             }
+            // 新增：处理原始能耗数据请求命令
+            if (action.startsWith("get_raw_energy_data_")) {
+                String deviceId = action.substring("get_raw_energy_data_".length());
+                System.out.printf("[HomeSimulator] 接收到设备 %s 的原始能耗数据请求\n", deviceId);
+                handleRawEnergyDataRequest(deviceId);
+                return;
+            }
 
             switch (deviceType.toLowerCase()) {
                 case "home":
@@ -325,6 +325,72 @@ public class HomeSimulator {
         }
     }
 
+    /**
+     * 处理原始能耗数据请求
+     */
+    private void handleRawEnergyDataRequest(String deviceId) {
+        try {
+            // 检查设备是否存在
+            Furniture device = furnitureManager.getAllFurniture().stream()
+                    .filter(f -> deviceId.equals(f.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (device == null) {
+                System.err.printf("[HomeSimulator] 未找到设备: %s\n", deviceId);
+                return;
+            }
+
+            // 从缓存获取历史数据（过去24小时）
+            List<EnergyDataHistory.EnergyDataPoint> historyData = energyDataHistory.getHistoryData(deviceId, "24h");
+
+            if (historyData.isEmpty()) {
+                System.out.printf("[HomeSimulator] 设备 %s 暂无足够的历史数据\n", deviceId);
+                return;
+            }
+
+            // 通过DDS发送原始能耗数据到前端
+            sendRawEnergyDataToFrontend(deviceId, device.getType(), historyData);
+
+        } catch (Exception e) {
+            System.err.println("[HomeSimulator] 处理原始能耗数据请求时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 将原始能耗数据发送到前端
+     */
+    private void sendRawEnergyDataToFrontend(String deviceId, String deviceType, List<EnergyDataHistory.EnergyDataPoint> historyData) {
+        try {
+            // 遍历数据点并通过EnergyReportPublisher发送
+            for (EnergyDataHistory.EnergyDataPoint point : historyData) {
+                // 创建EnergyReport对象
+                EnergyReport report = new EnergyReport();
+                report.deviceId = deviceId;
+                report.deviceType = deviceType;
+                report.currentPower = point.getPowerConsumption();
+                report.dailyConsumption = 0; // 可以根据需要计算或设置
+                report.weeklyConsumption = 0; // 可以根据需要计算或设置
+
+                // 将时间戳格式化为字符串
+                LocalDateTime dateTime = LocalDateTime.ofEpochSecond(point.getTimestamp(), 0, ZoneOffset.UTC);
+                report.timeStamp = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+                // 使用energyReportPublisher发送数据
+                if (energyReportPublisher != null) {
+                    energyReportPublisher.publishSingleReport(report);
+                }
+            }
+
+            System.out.printf("[HomeSimulator] 设备 %s 的原始能耗数据发送完成，共发送 %d 个数据点\n",
+                    deviceId, historyData.size());
+
+        } catch (Exception e) {
+            System.err.println("[HomeSimulator] 发送原始能耗数据时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
     /**
      * 处理能耗趋势图请求
      */
