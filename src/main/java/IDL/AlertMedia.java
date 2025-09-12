@@ -9,7 +9,7 @@ public class AlertMedia{
     public int total_size = 0;// @ID(4)
     public int chunk_seq = 0;// @ID(5)
     public int chunk_size = 0;// @ID(6)
-    public Blob chunk = new Blob();// @ID(7)
+    public SmartDemo03.Blob chunk = new SmartDemo03.Blob();// @ID(7)
 
     public AlertMedia(){
 

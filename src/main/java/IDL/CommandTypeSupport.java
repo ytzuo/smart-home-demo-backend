@@ -81,11 +81,11 @@ public class CommandTypeSupport extends TypeSupport {
     }
 
     public int get_max_sizeI(){
-        return 0xffffffff;
+        return 1044;
     }
 
     public int get_max_key_sizeI(){
-        return 0xffffffff;
+        return 1044;
     }
 
     public boolean has_keyI(){
@@ -220,7 +220,7 @@ public class CommandTypeSupport extends TypeSupport {
         TypeCodeImpl memberTc = new TypeCodeImpl();
         TypeCodeImpl eleTc = new TypeCodeImpl();
 
-        memberTc = factory.create_string_TC(0xffffffff);
+        memberTc = factory.create_string_TC(255);
         if (memberTc == null){
             System.out.println("Get Member deviceId TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -242,7 +242,7 @@ public class CommandTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(0xffffffff);
+        memberTc = factory.create_string_TC(255);
         if (memberTc == null){
             System.out.println("Get Member deviceType TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -264,7 +264,7 @@ public class CommandTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(0xffffffff);
+        memberTc = factory.create_string_TC(255);
         if (memberTc == null){
             System.out.println("Get Member action TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -307,7 +307,7 @@ public class CommandTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(0xffffffff);
+        memberTc = factory.create_string_TC(255);
         if (memberTc == null){
             System.out.println("Get Member timeStamp TypeCode failed.");
             factory.delete_TC(s_typeCode);

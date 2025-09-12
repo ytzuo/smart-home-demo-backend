@@ -9,6 +9,9 @@ public class HomeStatus{
 
     public HomeStatus(){
 
+        this.deviceIds.maximum(255);
+        this.deviceTypes.maximum(255);
+        this.deviceStatus.maximum(255);
     }
 
     public HomeStatus(HomeStatus other){

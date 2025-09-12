@@ -72,11 +72,11 @@ public class VehicleStatusTypeSupport extends TypeSupport {
     }
 
     public int get_max_sizeI(){
-        return 0xffffffff;
+        return 528;
     }
 
     public int get_max_key_sizeI(){
-        return 0xffffffff;
+        return 528;
     }
 
     public boolean has_keyI(){
@@ -308,7 +308,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(0xffffffff);
+        memberTc = factory.create_string_TC(255);
         if (memberTc == null){
             System.out.println("Get Member location TypeCode failed.");
             factory.delete_TC(s_typeCode);
@@ -330,7 +330,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(0xffffffff);
+        memberTc = factory.create_string_TC(255);
         if (memberTc == null){
             System.out.println("Get Member timeStamp TypeCode failed.");
             factory.delete_TC(s_typeCode);
