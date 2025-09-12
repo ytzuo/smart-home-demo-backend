@@ -17,7 +17,8 @@ import IDL.PresenceTypeSupport;
 import IDL.PresenceDataWriter;
 import HomeSimulator.DDS.MediaPublisher;
 import IDL.AlertMediaTypeSupport;
-
+import HomeSimulator.DDS.EnergyReportPublisher;
+import IDL.EnergyReportTypeSupport;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -49,7 +50,9 @@ public class HomeSimulator {
     private Topic alertMediaTopic;
     // 新增：Presence定时发送调度器
     private ScheduledExecutorService presenceScheduler;
-//NB
+    // 新增：能耗报告发布器
+    private EnergyReportPublisher energyReportPublisher;
+    private Topic energyReportTopic;
     public HomeSimulator() {
         loadLibrary();
         this.running = new AtomicBoolean(false);
@@ -98,10 +101,20 @@ public class HomeSimulator {
 
         // 4. 发送一次Presence状态
         publishPresenceStatus();
-// ======== 新增：启动Presence定时发送任务（每30秒一次） ========
+
+        // 新增：发送一次能耗报告
+        if (energyReportPublisher != null) {
+            energyReportPublisher.publishEnergyReports();
+        }
+// ======== 新增：启动Presence定时发送任务（每10秒一次） ========
         presenceScheduler = Executors.newSingleThreadScheduledExecutor();
         presenceScheduler.scheduleAtFixedRate(
                 this::publishPresenceStatus, 10, 10, TimeUnit.SECONDS); // 首次延迟30秒，之后每30秒执行
+
+        // 新增：启动能耗报告定时发布任务（每10秒一次）
+        if (energyReportPublisher != null) {
+            energyReportPublisher.startPeriodicReporting(10);
+        }
         System.out.println("[HomeSimulator] 家居模拟器启动完成");
         System.out.println("[HomeSimulator] 使用控制台命令触发报警: lt1(灯具状态异常), lh1(灯具过热), at1(空调温度异常), ap1(空调性能异常)");
 
@@ -124,6 +137,9 @@ public class HomeSimulator {
         // 新增：注册AlertMedia类型
         AlertMediaTypeSupport.get_instance().register_type(
                 ddsParticipant.getDomainParticipant(), "AlertMedia");
+        // 新增：注册EnergyReport类型
+        EnergyReportTypeSupport.get_instance().register_type(
+                ddsParticipant.getDomainParticipant(), "EnergyReport");
         // 创建Topic
         Topic commandTopic = ddsParticipant.createTopic(
                 "Command", CommandTypeSupport.get_instance());
@@ -136,6 +152,9 @@ public class HomeSimulator {
         // 新增：创建AlertMedia Topic
         alertMediaTopic = ddsParticipant.createTopic(
                 "AlertMedia", AlertMediaTypeSupport.get_instance());
+        // 新增：创建EnergyReport Topic
+        energyReportTopic = ddsParticipant.createTopic(
+                "EnergyReport", EnergyReportTypeSupport.get_instance());
         // 初始化订阅者（命令接收）
         commandSubscriber = new CommandSubscriber();
         commandSubscriber.start(
@@ -154,6 +173,10 @@ public class HomeSimulator {
         // 新增：初始化MediaPublisher
         mediaPublisher = new MediaPublisher();
         mediaPublisher.start(ddsPublisher, alertMediaTopic);
+        // 新增：初始化EnergyReportPublisher
+        energyReportPublisher = new EnergyReportPublisher();
+        energyReportPublisher.start(ddsPublisher, energyReportTopic, furnitureManager);
+
 
         // 创建Presence DataWriter
         DataWriterQos presenceQos = new DataWriterQos();
@@ -676,6 +699,11 @@ public class HomeSimulator {
         // ======== 新增：停止Presence定时发送任务 ========
         if (presenceScheduler != null) {
             presenceScheduler.shutdownNow();
+        }
+
+        // 新增：停止能耗报告发布器
+        if (energyReportPublisher != null) {
+            energyReportPublisher.stop();
         }
 
         System.out.println("[HomeSimulator] 家居模拟器已关闭");
