@@ -299,7 +299,7 @@ public class VehicleHealthReportTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("VehicleHealthReport");
+        s_typeCode = factory.create_struct_TC("IDL.VehicleHealthReport");
         if (s_typeCode == null){
             System.out.println("create struct VehicleHealthReport typecode failed.");
             return s_typeCode;

@@ -1,6 +1,5 @@
-module SmartDemo03{
-	typedef sequence<octet> Blob;
-
+module IDL{
+typedef sequence<octet> Blob;
 	struct Presence {
 		boolean inRange;
 		string deviceId;
@@ -69,4 +68,16 @@ module SmartDemo03{
 		string nextMaintenance;           // 下次保养建议日期（格式：yyyy-MM-dd）
 		string timeStamp;                 // 报告生成时间戳（格式：yyyy-MM-dd HH:mm:ss）
 	};
+
+	struct ReportMedia { //用于趋势图/健康报告图表等可视化结果传输
+        string reportId;        // 报告唯一ID
+        string reportType;      // 报告类型
+        string deviceId;        // 关联设备ID
+        long total_size;        // 图片总大小（字节数）
+        long chunk_seq;         // 当前分片序号（从0开始）
+        long chunk_size;        // 图片分片大小
+        Blob chunk;             // 图片分片内容
+        string timeStamp;       // 报告生成时间戳
+    };
 };
+

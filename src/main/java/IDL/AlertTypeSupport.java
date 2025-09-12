@@ -230,7 +230,7 @@ public class AlertTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("Alert");
+        s_typeCode = factory.create_struct_TC("IDL.Alert");
         if (s_typeCode == null){
             System.out.println("create struct Alert typecode failed.");
             return s_typeCode;

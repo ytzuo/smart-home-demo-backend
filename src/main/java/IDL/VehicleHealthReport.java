@@ -1,5 +1,6 @@
 package IDL;
 
+
 public class VehicleHealthReport{
     public String vehicleId = "";// @ID(0)
     public com.zrdds.infrastructure.StringSeq componentTypes = new com.zrdds.infrastructure.StringSeq();// @ID(1)
