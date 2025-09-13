@@ -1,8 +1,12 @@
 import CarSimulator.DDS.CommandSubscriber;
 import CarSimulator.DDS.DdsParticipant;
 import CarSimulator.DDS.StatusPublisher;
+import CarSimulator.DDS.VehicleHealthPublisher;
+import CarSimulator.VehicleHealthManager;
 import IDL.Command;
 import IDL.CommandTypeSupport;
+import IDL.VehicleHealthReport;
+import IDL.VehicleHealthReportTypeSupport;
 import IDL.VehicleStatusTypeSupport;
 import com.zrdds.topic.Topic;
 import java.text.SimpleDateFormat;
@@ -13,39 +17,43 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class CarSimulator {
+    private static final String VEHICLE_ID = "car_001";
     private static boolean hasLoad = false;
 
+    // DDS Components
+    private DdsParticipant ddsParticipant;
     private CommandSubscriber commandSubscriber;
     private StatusPublisher statusPublisher;
-    private DdsParticipant ddsParticipant;
-    private AtomicBoolean running; // 控制运行状态
-    private ScheduledExecutorService statusReporter; // 定时状态上报
-    private CarSimulatorAlert alertSystem; // 车辆报警系统
+    private VehicleHealthPublisher vehicleHealthPublisher;
 
-    // 车辆状态
+    // Schedulers
+    private ScheduledExecutorService statusUpdater; // For realistic status changes
+    private ScheduledExecutorService statusReporter; // For publishing status
+    private ScheduledExecutorService healthReporter; // For publishing health reports
+
+    // Vehicle State
+    private final AtomicBoolean running = new AtomicBoolean(false);
     private boolean engineOn = false;
     private boolean doorsLocked = true;
     private float fuelPercent = 100.0f;
-    // 新增状态参数
     private boolean acOn = false;
     private String location = "Garage";
-    private String timeStamp = getCurrentTimeStamp();
-    // 状态自动更新调度器
-    private ScheduledExecutorService statusUpdater;
-    // 基础油耗(%)/秒（发动机启动时）
-    private static final float BASE_FUEL_CONSUMPTION = 0.08f;
-    // 空调额外油耗(%)/秒
-    private static final float AC_EXTRA_CONSUMPTION = 0.04f;
-    // 发动机运行累计时间(秒) - 临时变量，不算新增状态
+    private String timeStamp;
     private long engineRunningTime = 0;
 
-    private String getCurrentTimeStamp() {
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-    }
+    // Modules
+    private CarSimulatorAlert alertSystem;
+    private VehicleHealthManager vehicleHealthManager;
+
+    // Constants
+    private static final float BASE_FUEL_CONSUMPTION = 0.08f;
+    private static final float AC_EXTRA_CONSUMPTION = 0.04f;
+
     public CarSimulator() {
         loadLibrary();
-        running = new AtomicBoolean(false);
         alertSystem = new CarSimulatorAlert();
+        vehicleHealthManager = new VehicleHealthManager(VEHICLE_ID);
+        timeStamp = getCurrentTimeStamp();
     }
 
     private void loadLibrary() {
@@ -65,14 +73,23 @@ public class CarSimulator {
     public void start() {
         System.out.println("[CarSimulator] 启动车辆模拟器...");
 
-        running.set(true);
-        initDDS();
-        startStatusReporting();
-        startConsoleInteraction();
-        // 启动状态自动更新
+        try {
+            running.set(true);
+            initDDS();
+            startSchedulers();
+            startConsoleInteraction();
+            keepRunning();
+        } catch (Exception e) {
+            System.err.println("[CarSimulator] 启动过程中发生严重错误: " + e.getMessage());
+            e.printStackTrace();
+            shutdown();
+        }
+    }
+
+    private void startSchedulers() {
         startRealisticStatusUpdates();
-        // 阻塞主线程
-        keepRunning();
+        startStatusReporting();
+        startHealthReporting();
     }
 
     private void startRealisticStatusUpdates() {
@@ -135,32 +152,41 @@ public class CarSimulator {
     }
 
     private void initDDS() {
-        ddsParticipant = DdsParticipant.getInstance();
+        try {
+            ddsParticipant = DdsParticipant.getInstance();
 
-        // 注册IDL类型
+            registerDdsTypes();
+
+            Topic commandTopic = ddsParticipant.createTopic("Command", CommandTypeSupport.get_instance());
+            Topic vehicleStatusTopic = ddsParticipant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
+            Topic vehicleHealthTopic = ddsParticipant.createTopic("VehicleHealthReport", VehicleHealthReportTypeSupport.get_instance());
+
+            commandSubscriber = new CommandSubscriber();
+            commandSubscriber.setCommandHandler(this::handleCommand);
+            commandSubscriber.start(ddsParticipant.getSubscriber(), commandTopic);
+
+            statusPublisher = new StatusPublisher();
+            statusPublisher.start(ddsParticipant.getPublisher(), vehicleStatusTopic);
+
+            vehicleHealthPublisher = new VehicleHealthPublisher();
+            vehicleHealthPublisher.start(ddsParticipant.getPublisher(), vehicleHealthTopic);
+
+            alertSystem.initialize(ddsParticipant, this);
+            alertSystem.startMonitoring();
+
+            reportCurrentStatus();
+
+            System.out.println("[CarSimulator] DDS初始化完成");
+        } catch (Exception e) {
+            System.err.println("[CarSimulator] DDS初始化失败: " + e.getMessage());
+            throw new RuntimeException("DDS Initialization failed", e);
+        }
+    }
+
+    private void registerDdsTypes() {
         CommandTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "Command");
         VehicleStatusTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "VehicleStatus");
-
-        // 创建Topic
-        Topic commandTopic = ddsParticipant.createTopic("Command", CommandTypeSupport.get_instance());
-        Topic vehicleStatusTopic = ddsParticipant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
-
-        // 初始化Subscriber和Publisher
-        commandSubscriber = new CommandSubscriber();
-        commandSubscriber.setCommandHandler(this::handleCommand);
-        commandSubscriber.start(ddsParticipant.getSubscriber(), commandTopic);
-
-        statusPublisher = new StatusPublisher();
-        statusPublisher.start(ddsParticipant.getPublisher(), vehicleStatusTopic);
-
-        // 初始化报警系统
-        alertSystem.initialize(ddsParticipant, this);
-        alertSystem.startMonitoring();
-
-        // 初始状态上报
-        reportCurrentStatus();
-
-        System.out.println("[CarSimulator] DDS初始化完成");
+        VehicleHealthReportTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "VehicleHealthReport");
     }
 
     private void handleCommand(Command command) {
@@ -307,20 +333,60 @@ public class CarSimulator {
         System.out.println("[CarSimulator] 状态上报已启动");
     }
 
+    private void startHealthReporting() {
+        healthReporter = Executors.newSingleThreadScheduledExecutor();
+
+        // 每30秒上报一次健康状况
+        healthReporter.scheduleAtFixedRate(() -> {
+            if (running.get()) {
+                try {
+                    VehicleHealthReport report = vehicleHealthManager.generateReport();
+                    vehicleHealthPublisher.publish(report);
+                } catch (Exception e) {
+                    System.err.println("[CarSimulator] 发布车辆健康报告时出错: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }, 0, 30, TimeUnit.SECONDS);
+
+        System.out.println("[CarSimulator] 车辆健康报告已启动");
+    }
+
     private void reportCurrentStatus() {
         if (statusPublisher == null) {
             return;
         }
 
         try {
-            // 更新时间戳
-            timeStamp = getCurrentTimeStamp();
-            System.out.println("[CarSimulator] 发布车辆状态: engineOn=" + engineOn + ", doorsLocked=" + doorsLocked + ", acOn=" + acOn + ", fuelPercent=" + fuelPercent + ", location=" + location + ", timeStamp=" + timeStamp);
-            statusPublisher.publishVehicleStatus(engineOn, doorsLocked, acOn, fuelPercent, location, timeStamp);
+            // 每次上报时都获取当前时间戳
+            String currentTimeStamp = getCurrentTimeStamp();
+            System.out.println("[CarSimulator] 发布车辆状态: engineOn=" + engineOn + ", doorsLocked=" + doorsLocked + ", acOn=" + acOn + ", fuelPercent=" + fuelPercent + ", location=" + location + ", timeStamp=" + currentTimeStamp);
+            statusPublisher.publishVehicleStatus(engineOn, doorsLocked, acOn, fuelPercent, location, currentTimeStamp);
+            
+            // 更新内部状态的时间戳
+            this.timeStamp = currentTimeStamp;
         } catch (Exception e) {
             System.err.println("[CarSimulator] 上报状态时发生错误: " + e.getMessage());
         }
     }
+    
+    private String getCurrentTimeStamp() {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+    }
+    
+    /**
+     * 获取当前车辆状态的快照，包含最新时间戳
+     */
+    public String getCurrentStatusSnapshot() {
+        return String.format("时间: %s, 发动机: %s, 车门: %s, 空调: %s, 油量: %.1f%%, 位置: %s",
+                getCurrentTimeStamp(),
+                engineOn ? "开启" : "关闭",
+                doorsLocked ? "上锁" : "解锁",
+                acOn ? "开启" : "关闭",
+                fuelPercent,
+                location);
+    }
+
     private void startConsoleInteraction() {
         Thread consoleThread = new Thread(() -> {
             java.util.Scanner scanner = new java.util.Scanner(System.in);
@@ -378,50 +444,44 @@ public class CarSimulator {
         System.out.println("[CarSimulator] 正在关闭车辆模拟器...");
         running.set(false);
 
-        // 停止报警系统
-        if (alertSystem != null) {
-            alertSystem.close();
-        }
-
-        // 停止状态上报
-        if (statusReporter != null) {
-            statusReporter.shutdown();
-            try {
-                if (!statusReporter.awaitTermination(5, TimeUnit.SECONDS)) {
-                    statusReporter.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                statusReporter.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        // 停止订阅者
-        if (commandSubscriber != null) {
-            commandSubscriber.stop();
-        }
-
-        // 关闭DDS连接
-        if (ddsParticipant != null) {
-            ddsParticipant.close();
-        }
-
-        // 停止状态自动更新调度器
-        if (statusUpdater != null) {
-            statusUpdater.shutdown();
-            try {
-                if (!statusUpdater.awaitTermination(3, TimeUnit.SECONDS)) {
-                    statusUpdater.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                statusUpdater.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
+        shutdownSchedulers();
+        shutdownDds();
 
         System.out.println("[CarSimulator] 车辆模拟器已关闭");
     }
 
+    private void shutdownSchedulers() {
+        shutdownExecutor(statusUpdater, "Status Updater");
+        shutdownExecutor(statusReporter, "Status Reporter");
+        shutdownExecutor(healthReporter, "Health Reporter");
+    }
+
+    private void shutdownDds() {
+        if (alertSystem != null) {
+            alertSystem.close();
+        }
+        if (commandSubscriber != null) {
+            commandSubscriber.stop();
+        }
+        if (ddsParticipant != null) {
+            ddsParticipant.close();
+        }
+    }
+
+    private void shutdownExecutor(ScheduledExecutorService executor, String name) {
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+            System.out.println("[" + name + "] 已关闭");
+        }
+    }
 
     public boolean isEngineOn() { return engineOn; }
     public boolean isDoorsLocked() { return doorsLocked; }

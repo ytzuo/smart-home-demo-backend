@@ -1,4 +1,5 @@
 import CarSimulator.DDS.DdsParticipant;
+import CarSimulator.DDS.MediaPublisher;
 import IDL.Alert;
 import IDL.AlertDataWriter;
 import IDL.AlertMediaTypeSupport;

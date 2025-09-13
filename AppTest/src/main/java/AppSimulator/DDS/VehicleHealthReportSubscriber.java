@@ -135,20 +135,68 @@ public class VehicleHealthReportSubscriber {
          * 处理单个车辆健康报告数据
          */
         private void handleVehicleHealthReport(VehicleHealthReport report) {
-            System.out.println("[VehicleHealthReportSubscriber] 收到车辆健康数据:");
-            System.out.println("  车辆ID: " + report.vehicleId);
-            System.out.println("  下次保养: " + report.nextMaintenance);
-            System.out.println("  部件状态:");
+            System.out.println("\n" + "=".repeat(50));
+            System.out.println("📱 手机端收到车辆健康报告");
+            System.out.println("=".repeat(50));
+            System.out.println("🚗 车辆ID: " + report.vehicleId);
+            System.out.println("📅 下次保养: " + report.nextMaintenance);
+            System.out.println("⏰ 报告时间: " + report.timeStamp);
+            
+            System.out.println("\n🔧 部件状态详情:");
+            int warningCount = 0;
+            int errorCount = 0;
+            
             for (int i = 0; i < report.componentTypes.length(); i++) {
-                System.out.printf("    • %s: %s (指标: %.2f)\n",
-                        report.componentTypes.get_at(i),
-                        report.componentStatuses.get_at(i),
-                        report.metrics.get_at(i));
+                String component = report.componentTypes.get_at(i);
+                String status = report.componentStatuses.get_at(i);
+                float metric = report.metrics.get_at(i);
+                
+                String statusIcon = getStatusIcon(status);
+                String statusColor = getStatusColor(status);
+                
+                System.out.printf("   %s %s: %s%s%s (指标: %.2f)\n",
+                        statusIcon, component, statusColor, status, "\u001B[0m", metric);
+                
+                if ("warning".equalsIgnoreCase(status)) warningCount++;
+                if ("error".equalsIgnoreCase(status)) errorCount++;
             }
-            System.out.println("  时间戳: " + report.timeStamp);
+            
+            System.out.println("\n📊 状态统计:");
+            System.out.println("   ✅ 正常部件: " + (report.componentTypes.length() - warningCount - errorCount));
+            if (warningCount > 0) System.out.println("   ⚠️  警告部件: " + warningCount);
+            if (errorCount > 0) System.out.println("   ❌ 故障部件: " + errorCount);
+            
+            if (warningCount == 0 && errorCount == 0) {
+                System.out.println("\n🎉 车辆状态良好！");
+            } else if (errorCount > 0) {
+                System.out.println("\n🚨 车辆存在故障，需要立即检修！");
+            } else if (warningCount > 0) {
+                System.out.println("\n⚠️  车辆存在警告，建议关注！");
+            }
+            
+            System.out.println("=".repeat(50));
+            
             // 通过回调将数据传递给MobileAppSimulator
             if (dataListener != null) {
                 dataListener.onVehicleHealthReportReceived(report);
+            }
+        }
+        
+        private String getStatusIcon(String status) {
+            switch (status.toLowerCase()) {
+                case "normal": return "✅";
+                case "warning": return "⚠️";
+                case "error": return "❌";
+                default: return "❓";
+            }
+        }
+        
+        private String getStatusColor(String status) {
+            switch (status.toLowerCase()) {
+                case "normal": return "\u001B[32m"; // 绿色
+                case "warning": return "\u001B[33m"; // 黄色
+                case "error": return "\u001B[31m"; // 红色
+                default: return "\u001B[0m"; // 默认
             }
         }
     }

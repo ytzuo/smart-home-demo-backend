@@ -1,3 +1,5 @@
+package CarSimulator.DDS;
+
 import IDL.AlertMedia;
 import IDL.AlertMediaDataWriter;
 import com.zrdds.infrastructure.InstanceHandle_t;
@@ -31,10 +33,10 @@ public class MediaPublisher {
                 com.zrdds.infrastructure.StatusKind.STATUS_MASK_NONE);
 
         if (writer == null) {
-            System.err.println("[MediaPublisher] 创建 Media DataWriter 失败");
+            System.err.println("[CarSimulator.DDS.MediaPublisher] 创建 Media DataWriter 失败");
             return false;
         }
-        System.out.println("[MediaPublisher] 媒体发布器启动成功");
+        System.out.println("[CarSimulator.DDS.MediaPublisher] 媒体发布器启动成功");
         return true;
     }
 
@@ -48,12 +50,12 @@ public class MediaPublisher {
      */
     public boolean publishMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {
         if (writer == null) {
-            System.err.println("[MediaPublisher] Media DataWriter 尚未初始化");
+            System.err.println("[CarSimulator.DDS.MediaPublisher] Media DataWriter 尚未初始化");
             return false;
         }
 
         if (fileData == null || fileData.length == 0) {
-            System.err.println("[MediaPublisher] 媒体数据为空");
+            System.err.println("[CarSimulator.DDS.MediaPublisher] 媒体数据为空");
             return false;
         }
 
@@ -61,7 +63,7 @@ public class MediaPublisher {
         int totalChunks = (int) Math.ceil((double) totalSize / CHUNK_SIZE);
         // 生成唯一报警ID
 
-        System.out.printf("[MediaPublisher] 开始发送媒体: deviceId=%s, deviceType=%s, type=%d, size=%d bytes, chunks=%d\n",
+        System.out.printf("[CarSimulator.DDS.MediaPublisher] 开始发送媒体: deviceId=%s, deviceType=%s, type=%d, size=%d bytes, chunks=%d\n",
                 deviceId, deviceType, mediaType, totalSize, totalChunks);
 
         // 分块发送
@@ -91,7 +93,7 @@ public class MediaPublisher {
                     media.chunk.set_at(i, chunkData[i]);
                 }
             } catch (Exception e) {
-                System.err.println("[MediaPublisher] 创建Blob对象时出错: " + e.getMessage());
+                System.err.println("[CarSimulator.DDS.MediaPublisher] 创建Blob对象时出错: " + e.getMessage());
                 return false;
             }
 
@@ -99,17 +101,17 @@ public class MediaPublisher {
             ReturnCode_t rtn = writer.write(media, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (rtn == ReturnCode_t.RETCODE_OK) {
                 // 增强块发送成功的日志，包含alertId
-                System.out.printf("[MediaPublisher] ✅  已发送块: #%d/%d, size=%d bytes, alertId: %d\n",
+                System.out.printf("[CarSimulator.DDS.MediaPublisher] ✅  已发送块: #%d/%d, size=%d bytes, alertId: %d\n",
                         chunkSeq + 1, totalChunks, currentChunkSize, alertId);
             } else {
                 // 增强块发送失败的日志，包含alertId
-                System.err.printf("[MediaPublisher] ❌  发送块 #%d 失败, 返回码: %s, alertId: %d\n",
+                System.err.printf("[CarSimulator.DDS.MediaPublisher] ❌  发送块 #%d 失败, 返回码: %s, alertId: %d\n",
                         chunkSeq, rtn, alertId);
                 return false;
             }
         }
 
-        System.out.println("[MediaPublisher] 媒体发送完成");
+        System.out.println("[CarSimulator.DDS.MediaPublisher] 媒体发送完成");
         return true;
     }
 }
