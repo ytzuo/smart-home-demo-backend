@@ -6,10 +6,10 @@ import com.zrdds.publication.DataWriter;
 import com.zrdds.subscription.DataReader;
 import java.io.UnsupportedEncodingException;
 
-public class VehicleStatusTypeSupport extends TypeSupport {
-    private String type_name = "VehicleStatus";
+public class EnergyReportTypeSupport extends TypeSupport {
+    private String type_name = "EnergyReport";
     private static TypeCodeImpl s_typeCode = null;
-    private static VehicleStatusTypeSupport m_instance = new VehicleStatusTypeSupport();
+    private static EnergyReportTypeSupport m_instance = new EnergyReportTypeSupport();
 
     private final byte[] tmp_byte_obj = new byte[1];
     private final char[] tmp_char_obj = new char[1];
@@ -21,13 +21,13 @@ public class VehicleStatusTypeSupport extends TypeSupport {
     private final boolean[] tmp_boolean_obj = new boolean[1];
 
     
-    private VehicleStatusTypeSupport(){}
+    private EnergyReportTypeSupport(){}
 
     
     public static TypeSupport get_instance() { return m_instance; }
 
     public Object create_sampleI() {
-        VehicleStatus sample = new VehicleStatus();
+        EnergyReport sample = new EnergyReport();
         return sample;
     }
 
@@ -36,9 +36,9 @@ public class VehicleStatusTypeSupport extends TypeSupport {
     }
 
     public int copy_sampleI(Object dst,Object src) {
-        VehicleStatus VehicleStatusDst = (VehicleStatus)dst;
-        VehicleStatus VehicleStatusSrc = (VehicleStatus)src;
-        VehicleStatusDst.copy(VehicleStatusSrc);
+        EnergyReport EnergyReportDst = (EnergyReport)dst;
+        EnergyReport EnergyReportSrc = (EnergyReport)src;
+        EnergyReportDst.copy(EnergyReportSrc);
         return 1;
     }
 
@@ -47,17 +47,22 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             System.out.println("NULL");
             return -1;
         }
-        VehicleStatus sample = (VehicleStatus)_sample;
-        System.out.println("sample.engineOn:" + sample.engineOn);
-        System.out.println("sample.doorsLocked:" + sample.doorsLocked);
-        System.out.println("sample.acOn:" + sample.acOn);
-        System.out.println("sample.fuelPercent:" + sample.fuelPercent);
-        if (sample.location != null){
-            System.out.println("sample.location:" + sample.location);
+        EnergyReport sample = (EnergyReport)_sample;
+        if (sample.deviceId != null){
+            System.out.println("sample.deviceId:" + sample.deviceId);
         }
         else{
-            System.out.println("sample.location: null");
+            System.out.println("sample.deviceId: null");
         }
+        if (sample.deviceType != null){
+            System.out.println("sample.deviceType:" + sample.deviceType);
+        }
+        else{
+            System.out.println("sample.deviceType: null");
+        }
+        System.out.println("sample.currentPower:" + sample.currentPower);
+        System.out.println("sample.dailyConsumption:" + sample.dailyConsumption);
+        System.out.println("sample.weeklyConsumption:" + sample.weeklyConsumption);
         if (sample.timeStamp != null){
             System.out.println("sample.timeStamp:" + sample.timeStamp);
         }
@@ -87,9 +92,9 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         return "-1";
     }
 
-    public DataReader create_data_reader() {return new VehicleStatusDataReader();}
+    public DataReader create_data_reader() {return new EnergyReportDataReader();}
 
-    public DataWriter create_data_writer() {return new VehicleStatusDataWriter();}
+    public DataWriter create_data_writer() {return new EnergyReportDataWriter();}
 
     public TypeCode get_inner_typecode(){
         TypeCode userTypeCode = get_typecode();
@@ -99,16 +104,16 @@ public class VehicleStatusTypeSupport extends TypeSupport {
 
     public int get_sizeI(Object _sample,long cdr, int offset) throws UnsupportedEncodingException {
         int initialAlignment = offset;
-        VehicleStatus sample = (VehicleStatus)_sample;
-        offset += CDRSerializer.get_untype_size(1, offset);
+        EnergyReport sample = (EnergyReport)_sample;
+        offset += CDRSerializer.get_string_size(sample.deviceId == null ? 0 : sample.deviceId.getBytes().length, offset);
 
-        offset += CDRSerializer.get_untype_size(1, offset);
-
-        offset += CDRSerializer.get_untype_size(1, offset);
+        offset += CDRSerializer.get_string_size(sample.deviceType == null ? 0 : sample.deviceType.getBytes().length, offset);
 
         offset += CDRSerializer.get_untype_size(4, offset);
 
-        offset += CDRSerializer.get_string_size(sample.location == null ? 0 : sample.location.getBytes().length, offset);
+        offset += CDRSerializer.get_untype_size(4, offset);
+
+        offset += CDRSerializer.get_untype_size(4, offset);
 
         offset += CDRSerializer.get_string_size(sample.timeStamp == null ? 0 : sample.timeStamp.getBytes().length, offset);
 
@@ -116,30 +121,30 @@ public class VehicleStatusTypeSupport extends TypeSupport {
     }
 
     public int serializeI(Object _sample ,long cdr) {
-         VehicleStatus sample = (VehicleStatus) _sample;
+         EnergyReport sample = (EnergyReport) _sample;
 
-        if (!CDRSerializer.put_boolean(cdr, sample.engineOn)){
-            System.out.println("serialize sample.engineOn failed.");
+        if (!CDRSerializer.put_string(cdr, sample.deviceId, sample.deviceId == null ? 0 : sample.deviceId.length())){
+            System.out.println("serialize sample.deviceId failed.");
             return -2;
         }
 
-        if (!CDRSerializer.put_boolean(cdr, sample.doorsLocked)){
-            System.out.println("serialize sample.doorsLocked failed.");
+        if (!CDRSerializer.put_string(cdr, sample.deviceType, sample.deviceType == null ? 0 : sample.deviceType.length())){
+            System.out.println("serialize sample.deviceType failed.");
             return -2;
         }
 
-        if (!CDRSerializer.put_boolean(cdr, sample.acOn)){
-            System.out.println("serialize sample.acOn failed.");
+        if (!CDRSerializer.put_float(cdr, sample.currentPower)){
+            System.out.println("serialize sample.currentPower failed.");
             return -2;
         }
 
-        if (!CDRSerializer.put_float(cdr, sample.fuelPercent)){
-            System.out.println("serialize sample.fuelPercent failed.");
+        if (!CDRSerializer.put_float(cdr, sample.dailyConsumption)){
+            System.out.println("serialize sample.dailyConsumption failed.");
             return -2;
         }
 
-        if (!CDRSerializer.put_string(cdr, sample.location, sample.location == null ? 0 : sample.location.length())){
-            System.out.println("serialize sample.location failed.");
+        if (!CDRSerializer.put_float(cdr, sample.weeklyConsumption)){
+            System.out.println("serialize sample.weeklyConsumption failed.");
             return -2;
         }
 
@@ -152,36 +157,36 @@ public class VehicleStatusTypeSupport extends TypeSupport {
     }
 
     synchronized public int deserializeI(Object _sample, long cdr){
-        VehicleStatus sample = (VehicleStatus) _sample;
-        if (!CDRDeserializer.get_boolean_array(cdr, tmp_boolean_obj, 1)){
-            System.out.println("deserialize sample.engineOn failed.");
-            return -2;
-        }
-        sample.engineOn= tmp_boolean_obj[0];
-
-        if (!CDRDeserializer.get_boolean_array(cdr, tmp_boolean_obj, 1)){
-            System.out.println("deserialize sample.doorsLocked failed.");
-            return -2;
-        }
-        sample.doorsLocked= tmp_boolean_obj[0];
-
-        if (!CDRDeserializer.get_boolean_array(cdr, tmp_boolean_obj, 1)){
-            System.out.println("deserialize sample.acOn failed.");
-            return -2;
-        }
-        sample.acOn= tmp_boolean_obj[0];
-
-        if (!CDRDeserializer.get_float_array(cdr, tmp_float_obj, 1)){
-            System.out.println("deserialize sample.fuelPercent failed.");
-            return -2;
-        }
-        sample.fuelPercent= tmp_float_obj[0];
-
-        sample.location = CDRDeserializer.get_string(cdr);
-        if(sample.location ==null){
-            System.out.println("deserialize member sample.location failed.");
+        EnergyReport sample = (EnergyReport) _sample;
+        sample.deviceId = CDRDeserializer.get_string(cdr);
+        if(sample.deviceId ==null){
+            System.out.println("deserialize member sample.deviceId failed.");
             return -3;
         }
+
+        sample.deviceType = CDRDeserializer.get_string(cdr);
+        if(sample.deviceType ==null){
+            System.out.println("deserialize member sample.deviceType failed.");
+            return -3;
+        }
+
+        if (!CDRDeserializer.get_float_array(cdr, tmp_float_obj, 1)){
+            System.out.println("deserialize sample.currentPower failed.");
+            return -2;
+        }
+        sample.currentPower= tmp_float_obj[0];
+
+        if (!CDRDeserializer.get_float_array(cdr, tmp_float_obj, 1)){
+            System.out.println("deserialize sample.dailyConsumption failed.");
+            return -2;
+        }
+        sample.dailyConsumption= tmp_float_obj[0];
+
+        if (!CDRDeserializer.get_float_array(cdr, tmp_float_obj, 1)){
+            System.out.println("deserialize sample.weeklyConsumption failed.");
+            return -2;
+        }
+        sample.weeklyConsumption= tmp_float_obj[0];
 
         sample.timeStamp = CDRDeserializer.get_string(cdr);
         if(sample.timeStamp ==null){
@@ -194,18 +199,18 @@ public class VehicleStatusTypeSupport extends TypeSupport {
 
     public int get_key_sizeI(Object _sample,long cdr,int offset)throws UnsupportedEncodingException {
         int initialAlignment = offset;
-        VehicleStatus sample = (VehicleStatus)_sample;
+        EnergyReport sample = (EnergyReport)_sample;
         offset += get_sizeI(sample, cdr, offset);
         return offset - initialAlignment;
     }
 
     public int serialize_keyI(Object _sample, long cdr){
-        VehicleStatus sample = (VehicleStatus)_sample;
+        EnergyReport sample = (EnergyReport)_sample;
         return 0;
     }
 
     public int deserialize_keyI(Object _sample, long cdr) {
-        VehicleStatus sample = (VehicleStatus)_sample;
+        EnergyReport sample = (EnergyReport)_sample;
         return 0;
     }
 
@@ -215,18 +220,18 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("IDL.VehicleStatus");
+        s_typeCode = factory.create_struct_TC("IDL.EnergyReport");
         if (s_typeCode == null){
-            System.out.println("create struct VehicleStatus typecode failed.");
+            System.out.println("create struct EnergyReport typecode failed.");
             return s_typeCode;
         }
         int ret = 0;
         TypeCodeImpl memberTc = new TypeCodeImpl();
         TypeCodeImpl eleTc = new TypeCodeImpl();
 
-        memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_BOOLEAN);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
-            System.out.println("Get Member engineOn TypeCode failed.");
+            System.out.println("Get Member deviceId TypeCode failed.");
             factory.delete_TC(s_typeCode);
             s_typeCode = null;
             return null;
@@ -234,10 +239,11 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         ret = s_typeCode.add_member_to_struct(
             0,
             0,
-            "engineOn",
+            "deviceId",
             memberTc,
             false,
             false);
+        factory.delete_TC(memberTc);
         if (ret < 0)
         {
             factory.delete_TC(s_typeCode);
@@ -245,9 +251,9 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_BOOLEAN);
+        memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
-            System.out.println("Get Member doorsLocked TypeCode failed.");
+            System.out.println("Get Member deviceType TypeCode failed.");
             factory.delete_TC(s_typeCode);
             s_typeCode = null;
             return null;
@@ -255,10 +261,11 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         ret = s_typeCode.add_member_to_struct(
             1,
             1,
-            "doorsLocked",
+            "deviceType",
             memberTc,
             false,
             false);
+        factory.delete_TC(memberTc);
         if (ret < 0)
         {
             factory.delete_TC(s_typeCode);
@@ -266,9 +273,9 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_BOOLEAN);
+        memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_FLOAT);
         if (memberTc == null){
-            System.out.println("Get Member acOn TypeCode failed.");
+            System.out.println("Get Member currentPower TypeCode failed.");
             factory.delete_TC(s_typeCode);
             s_typeCode = null;
             return null;
@@ -276,7 +283,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         ret = s_typeCode.add_member_to_struct(
             2,
             2,
-            "acOn",
+            "currentPower",
             memberTc,
             false,
             false);
@@ -289,7 +296,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
 
         memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_FLOAT);
         if (memberTc == null){
-            System.out.println("Get Member fuelPercent TypeCode failed.");
+            System.out.println("Get Member dailyConsumption TypeCode failed.");
             factory.delete_TC(s_typeCode);
             s_typeCode = null;
             return null;
@@ -297,7 +304,7 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         ret = s_typeCode.add_member_to_struct(
             3,
             3,
-            "fuelPercent",
+            "dailyConsumption",
             memberTc,
             false,
             false);
@@ -308,9 +315,9 @@ public class VehicleStatusTypeSupport extends TypeSupport {
             return null;
         }
 
-        memberTc = factory.create_string_TC(0xffffffff);
+        memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_FLOAT);
         if (memberTc == null){
-            System.out.println("Get Member location TypeCode failed.");
+            System.out.println("Get Member weeklyConsumption TypeCode failed.");
             factory.delete_TC(s_typeCode);
             s_typeCode = null;
             return null;
@@ -318,11 +325,10 @@ public class VehicleStatusTypeSupport extends TypeSupport {
         ret = s_typeCode.add_member_to_struct(
             4,
             4,
-            "location",
+            "weeklyConsumption",
             memberTc,
             false,
             false);
-        factory.delete_TC(memberTc);
         if (ret < 0)
         {
             factory.delete_TC(s_typeCode);

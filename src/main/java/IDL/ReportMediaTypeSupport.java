@@ -6,10 +6,10 @@ import com.zrdds.publication.DataWriter;
 import com.zrdds.subscription.DataReader;
 import java.io.UnsupportedEncodingException;
 
-public class AlertMediaTypeSupport extends TypeSupport {
-    private String type_name = "AlertMedia";
+public class ReportMediaTypeSupport extends TypeSupport {
+    private String type_name = "ReportMedia";
     private static TypeCodeImpl s_typeCode = null;
-    private static AlertMediaTypeSupport m_instance = new AlertMediaTypeSupport();
+    private static ReportMediaTypeSupport m_instance = new ReportMediaTypeSupport();
 
     private final byte[] tmp_byte_obj = new byte[1];
     private final char[] tmp_char_obj = new char[1];
@@ -21,13 +21,13 @@ public class AlertMediaTypeSupport extends TypeSupport {
     private final boolean[] tmp_boolean_obj = new boolean[1];
 
     
-    private AlertMediaTypeSupport(){}
+    private ReportMediaTypeSupport(){}
 
     
     public static TypeSupport get_instance() { return m_instance; }
 
     public Object create_sampleI() {
-        AlertMedia sample = new AlertMedia();
+        ReportMedia sample = new ReportMedia();
         return sample;
     }
 
@@ -36,9 +36,9 @@ public class AlertMediaTypeSupport extends TypeSupport {
     }
 
     public int copy_sampleI(Object dst,Object src) {
-        AlertMedia AlertMediaDst = (AlertMedia)dst;
-        AlertMedia AlertMediaSrc = (AlertMedia)src;
-        AlertMediaDst.copy(AlertMediaSrc);
+        ReportMedia ReportMediaDst = (ReportMedia)dst;
+        ReportMedia ReportMediaSrc = (ReportMedia)src;
+        ReportMediaDst.copy(ReportMediaSrc);
         return 1;
     }
 
@@ -47,21 +47,25 @@ public class AlertMediaTypeSupport extends TypeSupport {
             System.out.println("NULL");
             return -1;
         }
-        AlertMedia sample = (AlertMedia)_sample;
+        ReportMedia sample = (ReportMedia)_sample;
+        if (sample.reportId != null){
+            System.out.println("sample.reportId:" + sample.reportId);
+        }
+        else{
+            System.out.println("sample.reportId: null");
+        }
+        if (sample.reportType != null){
+            System.out.println("sample.reportType:" + sample.reportType);
+        }
+        else{
+            System.out.println("sample.reportType: null");
+        }
         if (sample.deviceId != null){
             System.out.println("sample.deviceId:" + sample.deviceId);
         }
         else{
             System.out.println("sample.deviceId: null");
         }
-        if (sample.deviceType != null){
-            System.out.println("sample.deviceType:" + sample.deviceType);
-        }
-        else{
-            System.out.println("sample.deviceType: null");
-        }
-        System.out.println("sample.alert_id:" + sample.alert_id);
-        System.out.println("sample.media_type:" + sample.media_type);
         System.out.println("sample.total_size:" + sample.total_size);
         System.out.println("sample.chunk_seq:" + sample.chunk_seq);
         System.out.println("sample.chunk_size:" + sample.chunk_size);
@@ -69,6 +73,12 @@ public class AlertMediaTypeSupport extends TypeSupport {
         System.out.println("sample.chunk.length():" +chunkTmpLen);
         for (int i = 0; i < chunkTmpLen; ++i){
             System.out.println("sample.chunk.get_at(" + i + "):" + sample.chunk.get_at(i));
+        }
+        if (sample.timeStamp != null){
+            System.out.println("sample.timeStamp:" + sample.timeStamp);
+        }
+        else{
+            System.out.println("sample.timeStamp: null");
         }
         return 0;
     }
@@ -93,9 +103,9 @@ public class AlertMediaTypeSupport extends TypeSupport {
         return "-1";
     }
 
-    public DataReader create_data_reader() {return new AlertMediaDataReader();}
+    public DataReader create_data_reader() {return new ReportMediaDataReader();}
 
-    public DataWriter create_data_writer() {return new AlertMediaDataWriter();}
+    public DataWriter create_data_writer() {return new ReportMediaDataWriter();}
 
     public TypeCode get_inner_typecode(){
         TypeCode userTypeCode = get_typecode();
@@ -105,14 +115,12 @@ public class AlertMediaTypeSupport extends TypeSupport {
 
     public int get_sizeI(Object _sample,long cdr, int offset) throws UnsupportedEncodingException {
         int initialAlignment = offset;
-        AlertMedia sample = (AlertMedia)_sample;
+        ReportMedia sample = (ReportMedia)_sample;
+        offset += CDRSerializer.get_string_size(sample.reportId == null ? 0 : sample.reportId.getBytes().length, offset);
+
+        offset += CDRSerializer.get_string_size(sample.reportType == null ? 0 : sample.reportType.getBytes().length, offset);
+
         offset += CDRSerializer.get_string_size(sample.deviceId == null ? 0 : sample.deviceId.getBytes().length, offset);
-
-        offset += CDRSerializer.get_string_size(sample.deviceType == null ? 0 : sample.deviceType.getBytes().length, offset);
-
-        offset += CDRSerializer.get_untype_size(4, offset);
-
-        offset += CDRSerializer.get_untype_size(4, offset);
 
         offset += CDRSerializer.get_untype_size(4, offset);
 
@@ -126,29 +134,26 @@ public class AlertMediaTypeSupport extends TypeSupport {
             offset += 1 * chunkLen;
         }
 
+        offset += CDRSerializer.get_string_size(sample.timeStamp == null ? 0 : sample.timeStamp.getBytes().length, offset);
+
         return offset - initialAlignment;
     }
 
     public int serializeI(Object _sample ,long cdr) {
-         AlertMedia sample = (AlertMedia) _sample;
+         ReportMedia sample = (ReportMedia) _sample;
+
+        if (!CDRSerializer.put_string(cdr, sample.reportId, sample.reportId == null ? 0 : sample.reportId.length())){
+            System.out.println("serialize sample.reportId failed.");
+            return -2;
+        }
+
+        if (!CDRSerializer.put_string(cdr, sample.reportType, sample.reportType == null ? 0 : sample.reportType.length())){
+            System.out.println("serialize sample.reportType failed.");
+            return -2;
+        }
 
         if (!CDRSerializer.put_string(cdr, sample.deviceId, sample.deviceId == null ? 0 : sample.deviceId.length())){
             System.out.println("serialize sample.deviceId failed.");
-            return -2;
-        }
-
-        if (!CDRSerializer.put_string(cdr, sample.deviceType, sample.deviceType == null ? 0 : sample.deviceType.length())){
-            System.out.println("serialize sample.deviceType failed.");
-            return -2;
-        }
-
-        if (!CDRSerializer.put_int(cdr, sample.alert_id)){
-            System.out.println("serialize sample.alert_id failed.");
-            return -2;
-        }
-
-        if (!CDRSerializer.put_int(cdr, sample.media_type)){
-            System.out.println("serialize sample.media_type failed.");
             return -2;
         }
 
@@ -178,34 +183,33 @@ public class AlertMediaTypeSupport extends TypeSupport {
             }
         }
 
+        if (!CDRSerializer.put_string(cdr, sample.timeStamp, sample.timeStamp == null ? 0 : sample.timeStamp.length())){
+            System.out.println("serialize sample.timeStamp failed.");
+            return -2;
+        }
+
         return 0;
     }
 
     synchronized public int deserializeI(Object _sample, long cdr){
-        AlertMedia sample = (AlertMedia) _sample;
+        ReportMedia sample = (ReportMedia) _sample;
+        sample.reportId = CDRDeserializer.get_string(cdr);
+        if(sample.reportId ==null){
+            System.out.println("deserialize member sample.reportId failed.");
+            return -3;
+        }
+
+        sample.reportType = CDRDeserializer.get_string(cdr);
+        if(sample.reportType ==null){
+            System.out.println("deserialize member sample.reportType failed.");
+            return -3;
+        }
+
         sample.deviceId = CDRDeserializer.get_string(cdr);
         if(sample.deviceId ==null){
             System.out.println("deserialize member sample.deviceId failed.");
             return -3;
         }
-
-        sample.deviceType = CDRDeserializer.get_string(cdr);
-        if(sample.deviceType ==null){
-            System.out.println("deserialize member sample.deviceType failed.");
-            return -3;
-        }
-
-        if (!CDRDeserializer.get_int_array(cdr, tmp_int_obj, 1)){
-            System.out.println("deserialize sample.alert_id failed.");
-            return -2;
-        }
-        sample.alert_id= tmp_int_obj[0];
-
-        if (!CDRDeserializer.get_int_array(cdr, tmp_int_obj, 1)){
-            System.out.println("deserialize sample.media_type failed.");
-            return -2;
-        }
-        sample.media_type= tmp_int_obj[0];
 
         if (!CDRDeserializer.get_int_array(cdr, tmp_int_obj, 1)){
             System.out.println("deserialize sample.total_size failed.");
@@ -238,23 +242,29 @@ public class AlertMediaTypeSupport extends TypeSupport {
             return -2;
         }
 
+        sample.timeStamp = CDRDeserializer.get_string(cdr);
+        if(sample.timeStamp ==null){
+            System.out.println("deserialize member sample.timeStamp failed.");
+            return -3;
+        }
+
         return 0;
     }
 
     public int get_key_sizeI(Object _sample,long cdr,int offset)throws UnsupportedEncodingException {
         int initialAlignment = offset;
-        AlertMedia sample = (AlertMedia)_sample;
+        ReportMedia sample = (ReportMedia)_sample;
         offset += get_sizeI(sample, cdr, offset);
         return offset - initialAlignment;
     }
 
     public int serialize_keyI(Object _sample, long cdr){
-        AlertMedia sample = (AlertMedia)_sample;
+        ReportMedia sample = (ReportMedia)_sample;
         return 0;
     }
 
     public int deserialize_keyI(Object _sample, long cdr) {
-        AlertMedia sample = (AlertMedia)_sample;
+        ReportMedia sample = (ReportMedia)_sample;
         return 0;
     }
 
@@ -264,14 +274,58 @@ public class AlertMediaTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("IDL.AlertMedia");
+        s_typeCode = factory.create_struct_TC("IDL.ReportMedia");
         if (s_typeCode == null){
-            System.out.println("create struct AlertMedia typecode failed.");
+            System.out.println("create struct ReportMedia typecode failed.");
             return s_typeCode;
         }
         int ret = 0;
         TypeCodeImpl memberTc = new TypeCodeImpl();
         TypeCodeImpl eleTc = new TypeCodeImpl();
+
+        memberTc = factory.create_string_TC(0xffffffff);
+        if (memberTc == null){
+            System.out.println("Get Member reportId TypeCode failed.");
+            factory.delete_TC(s_typeCode);
+            s_typeCode = null;
+            return null;
+        }
+        ret = s_typeCode.add_member_to_struct(
+            0,
+            0,
+            "reportId",
+            memberTc,
+            false,
+            false);
+        factory.delete_TC(memberTc);
+        if (ret < 0)
+        {
+            factory.delete_TC(s_typeCode);
+            s_typeCode = null;
+            return null;
+        }
+
+        memberTc = factory.create_string_TC(0xffffffff);
+        if (memberTc == null){
+            System.out.println("Get Member reportType TypeCode failed.");
+            factory.delete_TC(s_typeCode);
+            s_typeCode = null;
+            return null;
+        }
+        ret = s_typeCode.add_member_to_struct(
+            1,
+            1,
+            "reportType",
+            memberTc,
+            false,
+            false);
+        factory.delete_TC(memberTc);
+        if (ret < 0)
+        {
+            factory.delete_TC(s_typeCode);
+            s_typeCode = null;
+            return null;
+        }
 
         memberTc = factory.create_string_TC(0xffffffff);
         if (memberTc == null){
@@ -281,77 +335,13 @@ public class AlertMediaTypeSupport extends TypeSupport {
             return null;
         }
         ret = s_typeCode.add_member_to_struct(
-            0,
-            0,
+            2,
+            2,
             "deviceId",
             memberTc,
             false,
             false);
         factory.delete_TC(memberTc);
-        if (ret < 0)
-        {
-            factory.delete_TC(s_typeCode);
-            s_typeCode = null;
-            return null;
-        }
-
-        memberTc = factory.create_string_TC(0xffffffff);
-        if (memberTc == null){
-            System.out.println("Get Member deviceType TypeCode failed.");
-            factory.delete_TC(s_typeCode);
-            s_typeCode = null;
-            return null;
-        }
-        ret = s_typeCode.add_member_to_struct(
-            1,
-            1,
-            "deviceType",
-            memberTc,
-            false,
-            false);
-        factory.delete_TC(memberTc);
-        if (ret < 0)
-        {
-            factory.delete_TC(s_typeCode);
-            s_typeCode = null;
-            return null;
-        }
-
-        memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_INT);
-        if (memberTc == null){
-            System.out.println("Get Member alert_id TypeCode failed.");
-            factory.delete_TC(s_typeCode);
-            s_typeCode = null;
-            return null;
-        }
-        ret = s_typeCode.add_member_to_struct(
-            2,
-            2,
-            "alert_id",
-            memberTc,
-            false,
-            false);
-        if (ret < 0)
-        {
-            factory.delete_TC(s_typeCode);
-            s_typeCode = null;
-            return null;
-        }
-
-        memberTc = factory.get_primitive_TC(TypeCodeKind.DDS_TK_INT);
-        if (memberTc == null){
-            System.out.println("Get Member media_type TypeCode failed.");
-            factory.delete_TC(s_typeCode);
-            s_typeCode = null;
-            return null;
-        }
-        ret = s_typeCode.add_member_to_struct(
-            3,
-            3,
-            "media_type",
-            memberTc,
-            false,
-            false);
         if (ret < 0)
         {
             factory.delete_TC(s_typeCode);
@@ -367,8 +357,8 @@ public class AlertMediaTypeSupport extends TypeSupport {
             return null;
         }
         ret = s_typeCode.add_member_to_struct(
-            4,
-            4,
+            3,
+            3,
             "total_size",
             memberTc,
             false,
@@ -388,8 +378,8 @@ public class AlertMediaTypeSupport extends TypeSupport {
             return null;
         }
         ret = s_typeCode.add_member_to_struct(
-            5,
-            5,
+            4,
+            4,
             "chunk_seq",
             memberTc,
             false,
@@ -409,8 +399,8 @@ public class AlertMediaTypeSupport extends TypeSupport {
             return null;
         }
         ret = s_typeCode.add_member_to_struct(
-            6,
-            6,
+            5,
+            5,
             "chunk_size",
             memberTc,
             false,
@@ -434,9 +424,31 @@ public class AlertMediaTypeSupport extends TypeSupport {
             return null;
         }
         ret = s_typeCode.add_member_to_struct(
-            7,
-            7,
+            6,
+            6,
             "chunk",
+            memberTc,
+            false,
+            false);
+        factory.delete_TC(memberTc);
+        if (ret < 0)
+        {
+            factory.delete_TC(s_typeCode);
+            s_typeCode = null;
+            return null;
+        }
+
+        memberTc = factory.create_string_TC(0xffffffff);
+        if (memberTc == null){
+            System.out.println("Get Member timeStamp TypeCode failed.");
+            factory.delete_TC(s_typeCode);
+            s_typeCode = null;
+            return null;
+        }
+        ret = s_typeCode.add_member_to_struct(
+            7,
+            7,
+            "timeStamp",
             memberTc,
             false,
             false);

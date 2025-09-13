@@ -1,0 +1,83 @@
+module IDL{
+typedef sequence<octet> Blob;
+	struct Presence {
+		boolean inRange;
+		string deviceId;
+		string deviceType;
+		string timeStamp;
+	};
+
+	struct VehicleStatus {
+		boolean engineOn;
+		boolean doorsLocked;
+		boolean acOn;
+		float fuelPercent;
+		string location;
+		string timeStamp;
+	};
+
+	struct HomeStatus {
+		sequence<string> deviceIds;
+		sequence<string> deviceTypes;
+		sequence<string> deviceStatus; //采用JSON格式, 后端将每个家具的状态分别组成JSON格式, 前端按JSON格式进行解析, 保证可扩展性
+		string timeStamp;
+	};
+
+	struct Alert {
+		string deviceId;
+		string deviceType;
+		long alert_id;
+		string level; //INFO, WARN, ALERT
+		string description;
+		string timeStamp;
+	};
+
+	struct AlertMedia { //报警时传输图像, 暂未启用
+		string deviceId;
+		string deviceType;
+		long alert_id;
+		long media_type;
+		long total_size;
+		long chunk_seq;
+		long chunk_size;
+		Blob chunk;
+	};
+
+	struct Command {
+		string deviceId;
+		string deviceType;
+		string action; //控制命令类型
+		float value; //控制命令值
+		string timeStamp;
+	};
+
+	struct EnergyReport {
+		string deviceId;          // 设备ID（如"light1"、"ac1"）
+		string deviceType;        // 设备类型（如"light"、"ac"）
+		float currentPower;       // 当前功率（单位：W）
+		float dailyConsumption;   // 当日能耗（单位：kWh）
+		float weeklyConsumption;  // 本周能耗（单位：kWh）
+		string timeStamp;         // 数据采集时间戳（格式：yyyy-MM-dd HH:mm:ss）
+	};
+
+	struct VehicleHealthReport {
+		string vehicleId;                 // 车辆唯一ID（如"car_001"）
+		sequence<string> componentTypes;  // 部件类型列表（如"engine"、"tire"、"brake"）
+		sequence<string> componentStatuses; // 部件状态列表（"normal"/"warning"/"error"）
+		sequence<float> metrics;          // 部件指标列表（如温度、胎压、健康度等数值）
+		string nextMaintenance;           // 下次保养建议日期（格式：yyyy-MM-dd）
+		string timeStamp;                 // 报告生成时间戳（格式：yyyy-MM-dd HH:mm:ss）
+	};
+
+	struct ReportMedia { //用于趋势图/健康报告图表等可视化结果传输
+        string reportId;        // 报告唯一ID
+        string reportType;      // 报告类型
+        string deviceId;        // 关联设备ID
+        long total_size;        // 图片总大小（字节数）
+        long chunk_seq;         // 当前分片序号（从0开始）
+        long chunk_size;        // 图片分片大小
+        Blob chunk;             // 图片分片内容
+        string timeStamp;       // 报告生成时间戳
+    };
+};
+

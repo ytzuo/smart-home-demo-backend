@@ -269,12 +269,12 @@ public class HomeSimulatorAlert {
         if (type == AlertType.NONE) {
             return;
         }
-
         this.currentAlertType = type;
         this.alertMessage = message;
         this.alertActive.set(true);
         // 获取报警类型对应的alertId
         getAlertIdByType(type);
+
         int alertId = this.alert_id;
         System.out.printf("[HomeSimulatorAlert] 触发报警: 类型=%s, 信息=%s%n",
                 type.getValue(), message);
@@ -304,6 +304,7 @@ public class HomeSimulatorAlert {
                 deviceId = "ac2";
                 deviceType = "ac";
             }
+            System.out.println("[HomeSimulatorAlert] message:" + message);
 
             // 媒体类型：1表示图片
             int mediaType = 1;
@@ -313,7 +314,7 @@ public class HomeSimulatorAlert {
             byte[] mediaData = getSampleImageData(type);
 
             // 发送媒体数据
-            HomeSimulator.getInstance().sendMedia(deviceId, "camera", mediaType, mediaData, alertId);
+            HomeSimulator.getInstance().sendMedia(deviceId, deviceType, mediaType, mediaData, alertId);
             System.out.printf("[HomeSimulatorAlert] 已发送与报警关联的图片，设备ID: %s%n", deviceId);
         } catch (Exception e) {
             // 如果发送媒体失败，不影响报警的正常触发
@@ -359,17 +360,17 @@ public class HomeSimulatorAlert {
         // 这里只是一个示例实现
         switch (alertType) {
             case FIRE:
-                return "C:\\Users\\86183\\Pictures\\90.jpg";
+                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
             case INTRUSION:
-                return "C:\\Users\\86183\\Pictures\\90.jpg";
+                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
             case GAS_LEAK:
-                return "C:\\Users\\86183\\Pictures\\90.jpg";
+                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
             case WATER_LEAK:
-                return "C:\\Users\\86183\\Pictures\\90.jpg";
+                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
             case DEVICE_OVERHEAT:
-                return "C:\\Users\\86183\\Pictures\\90.jpg";
+                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
             default:
-                return "C:\\Users\\86183\\Pictures\\90.jpg";
+                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
         }
     }
 
@@ -563,17 +564,21 @@ public class HomeSimulatorAlert {
         String alertType = device.getAlertType();
         String alertMessage = device.getAlertMessage();
 
+        // 修改消息内容，添加deviceId和deviceType
+        String enhancedMessage = String.format("%s, deviceId: %s, deviceType: %s",
+                alertMessage, deviceId, deviceType);
+
         // 根据设备类型和报警类型确定系统报警类型
         AlertType systemAlertType = mapToSystemAlertType(deviceType, alertType);
 
-        // 触发系统报警
-        triggerAlert(systemAlertType, alertMessage);
+        // 触发系统报警 - 使用增强后的消息
+        triggerAlert(systemAlertType, enhancedMessage);
 
         // 直接发布Alert消息到手机端，使用正确的设备ID和类型
-        publishDeviceAlertMessage(deviceId, deviceType, systemAlertType, alertMessage, true);
+        publishDeviceAlertMessage(deviceId, deviceType, systemAlertType, enhancedMessage, true);
 
         System.out.printf("[HomeSimulatorAlert] 收到设备报警: ID=%s, 类型=%s, 消息=%s%n",
-                deviceId, alertType, alertMessage);
+                deviceId, alertType, enhancedMessage);
     }
 
     /**
@@ -652,8 +657,8 @@ public class HomeSimulatorAlert {
                 Alert alert = new Alert();
 
                 // 从消息中提取设备ID和类型
-                String deviceId = "system";
-                String deviceType = "system";
+                String deviceId;
+                String deviceType;
 
                 if (message.contains("light1") || message.contains("灯具 light1")) {
                     deviceId = "light1";
@@ -697,6 +702,7 @@ public class HomeSimulatorAlert {
      * @param message 报警消息
      * @param isActive 是否激活报警
      */
+    
     private void publishDeviceAlertMessage(String deviceId, String deviceType, AlertType type, String message, boolean isActive) {
         if (alertWriter != null) {
             try {
@@ -747,15 +753,15 @@ public class HomeSimulatorAlert {
         
         if ("light".equals(statusRecord.type)) {
             alertType = AlertType.LIGHT_ABNORMAL;
-            message = String.format("灯具 %s 状态异常，可能存在电路问题", device.getName());
+            message = String.format("灯具 %s 状态异常，可能存在电路问题, deviceId: %s, deviceType: %s", device.getName(),device.getId(),device.getType());
         } 
         else if ("ac".equals(statusRecord.type)) {
             alertType = AlertType.AC_ABNORMAL;
-            message = String.format("空调 %s 工作异常，可能存在温控故障", device.getName());
+            message = String.format("空调 %s 工作异常，可能存在温控故障, deviceId: %s, deviceType: %s", device.getName(),device.getId(),device.getType());
         }
         else {
             alertType = AlertType.DEVICE_MALFUNCTION;
-            message = String.format("设备 %s 工作异常", device.getName());
+            message = String.format("设备 %s 工作异常, deviceId: %s, deviceType: %s", device.getName(),device.getId(),device.getType());
         }
 
         // 触发报警

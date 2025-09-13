@@ -269,7 +269,7 @@ public class HomeStatusTypeSupport extends TypeSupport {
         }
         TypeCodeFactory factory = TypeCodeFactory.get_instance();
 
-        s_typeCode = factory.create_struct_TC("SmartDemo03.HomeStatus");
+        s_typeCode = factory.create_struct_TC("IDL.HomeStatus");
         if (s_typeCode == null){
             System.out.println("create struct HomeStatus typecode failed.");
             return s_typeCode;

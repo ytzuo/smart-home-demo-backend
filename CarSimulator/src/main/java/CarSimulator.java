@@ -209,6 +209,9 @@ public class CarSimulator {
             case "ac_off":
                 turnOffAc();
                 break;
+            case"get_status":
+                reportCurrentStatus();
+                break;
             default:
                 System.out.println("[CarSimulator] 未知命令: " + action);
         }
