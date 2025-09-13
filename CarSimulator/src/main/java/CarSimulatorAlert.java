@@ -289,17 +289,17 @@ public class CarSimulatorAlert {
     private String getImagePathForAlertType(CarAlertType alertType) {
         // 这里只是一个示例实现，实际应用中应该根据不同的报警类型返回不同的图片路径
         // 请根据实际环境修改图片路径
-        String basePath = "C:\\Users\\86183\\Pictures\\";
+        String basePath = "C:\\Users\\zz\\Desktop\\个人文件\\图\\";
 
         switch (alertType) {
             case LOW_FUEL:
-                return basePath + "90.jpg";
+                return basePath + "OIP-C (4).jpg";
             case ENGINE_OVERHEAT:
-                return basePath + "90.jpg";
+                return basePath + "OIP-C (4).jpg";
             case DOOR_UNLOCKED:
-                return basePath + "90.jpg";
+                return basePath + "OIP-C (4).jpg";
             default:
-                return basePath + "90.jpg";
+                return basePath + "OIP-C (4).jpg";
         }
     }
 

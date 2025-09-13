@@ -79,5 +79,15 @@ typedef sequence<octet> Blob;
         Blob chunk;             // 图片分片内容
         string timeStamp;       // 报告生成时间戳
     };
+
+    struct EnergyRawData {
+    		string deviceId;
+    		string deviceType;
+    		sequence<float> currentPowerSeq;
+    		sequence<float> dailyConsumptionSeq;
+    		sequence<float> weeklyConsumptionSeq;
+    		sequence<string> timeSeq;
+    		string timeStamp;
+    };
 };
 
