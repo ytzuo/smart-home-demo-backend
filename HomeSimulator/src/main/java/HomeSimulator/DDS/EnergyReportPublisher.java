@@ -162,8 +162,8 @@ public class EnergyReportPublisher {
             // 发布数据
             ReturnCode_t rtn = writer.write(report, InstanceHandle_t.HANDLE_NIL_NATIVE);
             if (rtn == ReturnCode_t.RETCODE_OK) {
-                System.out.printf("[EnergyReportPublisher] 发布能耗报告: 设备ID=%s, 类型=%s, 当前功率=%.2fW, 当日能耗=%.2fkWh\n",
-                        report.deviceId, report.deviceType, report.currentPower, report.dailyConsumption);
+                System.out.printf("[EnergyReportPublisher] 发布能耗报告: 设备ID=%s, 类型=%s, 当前功率=%.2fW, 当日能耗=%.2fkW, 时间=%s\n",
+                        report.deviceId, report.deviceType, report.currentPower, report.dailyConsumption, report.timeStamp);
             } else {
                 System.err.printf("[EnergyReportPublisher] 发布能耗报告失败: 设备ID=%s, 返回码=%s\n",
                         report.deviceId, rtn);

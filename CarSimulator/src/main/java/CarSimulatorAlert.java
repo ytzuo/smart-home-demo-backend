@@ -318,6 +318,7 @@ public class CarSimulatorAlert {
     private String getImagePathForAlertType(CarAlertType alertType) {
         // 这里只是一个示例实现，实际应用中应该根据不同的报警类型返回不同的图片路径
         // 请根据实际环境修改图片路径
+
         String basePath = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
 
         switch (alertType) {
@@ -329,6 +330,7 @@ public class CarSimulatorAlert {
                 return basePath + "testImage.jpg";
             default:
                 return basePath + "testImage.jpg";
+
         }
     }
 

@@ -68,6 +68,8 @@ public class HomeSimulator {
     // 在类顶部添加成员变量
     private EnergyDataHistory energyDataHistory;
     private ReportMediaPublisher reportMediaPublisher;
+    private Topic energyRawDataTopic;
+    private EnergyRawDataPublisher energyRawDataPublisher;
 
     public HomeSimulator() {
         loadLibrary();
@@ -177,6 +179,8 @@ public class HomeSimulator {
         // 新增：创建ReportMedia Topic
         Topic reportMediaTopic = ddsParticipant.createTopic(
                 "ReportMedia", IDL.ReportMediaTypeSupport.get_instance());
+        energyRawDataTopic = ddsParticipant.createTopic(
+                "EnergyRawData", EnergyRawDataTypeSupport.get_instance());
 
         // 初始化订阅者（命令接收）
         commandSubscriber = new CommandSubscriber();
@@ -206,6 +210,9 @@ public class HomeSimulator {
 
         // 新增：初始化EnergyDataHistory
         energyDataHistory = EnergyDataHistory.getInstance();
+
+        energyRawDataPublisher = new EnergyRawDataPublisher();
+        energyRawDataPublisher.initialize();
 
 
         // 创建Presence DataWriter
@@ -363,25 +370,43 @@ public class HomeSimulator {
      */
     private void sendRawEnergyDataToFrontend(String deviceId, String deviceType, List<EnergyDataHistory.EnergyDataPoint> historyData) {
         try {
+            EnergyRawData rawData = new EnergyRawData();
+            int len = historyData.size();
+            rawData.deviceId   = deviceId;
+            rawData.deviceType = deviceType;
+            rawData.currentPowerSeq.ensure_length(len, len);
+            rawData.dailyConsumptionSeq.ensure_length(len, len);
+            rawData.weeklyConsumptionSeq.ensure_length(len, len);
+            rawData.timeSeq.ensure_length(len, len);
             // 遍历数据点并通过EnergyReportPublisher发送
+            int i = 0;
             for (EnergyDataHistory.EnergyDataPoint point : historyData) {
                 // 创建EnergyReport对象
-                EnergyReport report = new EnergyReport();
-                report.deviceId = deviceId;
-                report.deviceType = deviceType;
-                report.currentPower = point.getPowerConsumption();
-                report.dailyConsumption = 0; // 可以根据需要计算或设置
-                report.weeklyConsumption = 0; // 可以根据需要计算或设置
+//                EnergyReport report = new EnergyReport();
+//                report.deviceId = deviceId;
+//                report.deviceType = deviceType;
+//                report.currentPower = point.getPowerConsumption();
+//                report.dailyConsumption = 0; // 可以根据需要计算或设置
+//                report.weeklyConsumption = 0; // 可以根据需要计算或设置
+//
+//                // 将时间戳格式化为字符串
+//                LocalDateTime dateTime = LocalDateTime.ofEpochSecond(point.getTimestamp(), 0, ZoneOffset.UTC);
+//                report.timeStamp = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+//
+//                // 使用energyReportPublisher发送数据
+//                if (energyReportPublisher != null) {
+//                    energyReportPublisher.publishSingleReport(report);
+//                }
 
+                rawData.currentPowerSeq.set_at(i, point.getCurrentPower());
+                rawData.dailyConsumptionSeq.set_at(i, point.getDailyConsumption());
+                rawData.weeklyConsumptionSeq.set_at(i, point.getWeeklyConsumption());
                 // 将时间戳格式化为字符串
-                LocalDateTime dateTime = LocalDateTime.ofEpochSecond(point.getTimestamp(), 0, ZoneOffset.UTC);
-                report.timeStamp = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-
-                // 使用energyReportPublisher发送数据
-                if (energyReportPublisher != null) {
-                    energyReportPublisher.publishSingleReport(report);
-                }
+                LocalDateTime dateTime = LocalDateTime.ofEpochSecond(point.getTimestamp()/1000, 0, ZoneOffset.UTC);
+                rawData.timeSeq.set_at(i, dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                i++;
             }
+            energyRawDataPublisher.publishEnergyRawData(rawData);
 
             System.out.printf("[HomeSimulator] 设备 %s 的原始能耗数据发送完成，共发送 %d 个数据点\n",
                     deviceId, historyData.size());
@@ -494,11 +519,11 @@ public class HomeSimulator {
                 }
 
                 try {
-                    series.add(new Day(date), point.getCurrentPower());
+                    series.addOrUpdate(new Day(date), point.getCurrentPower());
                 } catch (IllegalArgumentException e) {
                     // 如果Day构造仍然失败，使用替代方案
                     System.out.println("[HomeSimulator] Day构造失败，使用Millisecond替代: " + e.getMessage());
-                    series.add(new Millisecond(date), point.getCurrentPower());
+                    series.addOrUpdate(new Millisecond(date), point.getCurrentPower());
                 }
             }
             dataset.addSeries(series);

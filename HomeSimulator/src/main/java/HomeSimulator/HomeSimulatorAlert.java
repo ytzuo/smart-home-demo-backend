@@ -360,17 +360,17 @@ public class HomeSimulatorAlert {
         // 这里只是一个示例实现
         switch (alertType) {
             case FIRE:
-                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
+                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
             case INTRUSION:
-                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
+                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
             case GAS_LEAK:
-                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
+                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
             case WATER_LEAK:
-                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
+                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
             case DEVICE_OVERHEAT:
-                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
+                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
             default:
-                return "C:\\Users\\Xiao_Chen\\Pictures\\testImage.jpg";
+                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
         }
     }
 
