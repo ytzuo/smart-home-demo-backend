@@ -73,6 +73,11 @@ public class DdsParticipant {
     public Topic createTopic(String topicName, TypeSupport type) {
         TopicQos topicQos = new TopicQos();
         dp.get_default_topic_qos(topicQos);
+        
+        // 为Topic设置可靠的QoS策略，以匹配DataWriter
+        topicQos.reliability.kind = com.zrdds.infrastructure.ReliabilityQosPolicyKind.RELIABLE_RELIABILITY_QOS;
+        topicQos.history.kind = com.zrdds.infrastructure.HistoryQosPolicyKind.KEEP_ALL_HISTORY_QOS;
+
         Topic topic = dp.create_topic(topicName, type.get_type_name(), topicQos, null, 0);
         
         // 添加Topic创建失败的详细错误信息
