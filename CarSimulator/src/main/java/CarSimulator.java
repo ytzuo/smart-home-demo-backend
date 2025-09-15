@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 public class CarSimulator {
     private static final String VEHICLE_ID = "car_001";
     private static final String VEHICLE_MEDIA_TOPIC = "VehicleMedia";
+    private static final String VEHICLE_MEDIA_PATH = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
     private static boolean hasLoad = false;
     private Topic vehicleMediaTopic;
 
@@ -275,7 +276,7 @@ public class CarSimulator {
             int textHeight = fm.getHeight();
 
             // 设置文本位置（右下角）
-            int x = image.getWidth() - textWidth - 10; // 距离右边10像素
+            int x = image.getWidth() - textWidth - 30; // 距离右边10像素
             int y = image.getHeight() - 10; // 距离底部10像素
 
             // 添加黑色背景以增强可读性
@@ -465,9 +466,7 @@ public class CarSimulator {
     // 获取定时发送的图片数据
     private byte[] getPeriodicImageData() {
         try {
-            // 使用固定的图片路径
-            //TODO 根据自己设备修改图片路径
-            String imagePath = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\testImage.jpg";
+            String imagePath = VEHICLE_MEDIA_PATH + "testImage.jpg";
             File imageFile = new File(imagePath);
 
             if (imageFile.exists() && imageFile.isFile()) {
