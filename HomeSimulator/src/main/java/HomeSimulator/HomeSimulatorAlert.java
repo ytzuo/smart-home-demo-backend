@@ -69,7 +69,7 @@ public class HomeSimulatorAlert {
         }
     }
 
-    private static final String ALERT_IMAGE_PATH = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
+    //private static final String ALERT_IMAGE_PATH = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
     private Publisher publisher;
     private Topic homeStatusTopic;
     private HomeStatusDataWriter homeStatusWriter;
@@ -359,19 +359,28 @@ public class HomeSimulatorAlert {
     private String getImagePathForAlertType(AlertType alertType) {
         // 在实际应用中，应该根据不同的报警类型返回不同的图片路径
         // 这里只是一个示例实现
+        String projectDir = System.getProperty("user.dir");
+        String imagePath = projectDir + File.separator +"src"+File.separator+"main"+File.separator+ "resources" + File.separator + "images" + File.separator + "testImage.jpg";
+
         switch (alertType) {
             case FIRE:
-                return ALERT_IMAGE_PATH + "testImage.jpg";
+                return imagePath;
+                //return ALERT_IMAGE_PATH + "testImage.jpg";
             case INTRUSION:
-                return ALERT_IMAGE_PATH + "testImage.jpg";
+                return imagePath;
+            //return ALERT_IMAGE_PATH + "testImage.jpg";
             case GAS_LEAK:
-                return ALERT_IMAGE_PATH + "testImage.jpg";
+                return imagePath;
+            //return ALERT_IMAGE_PATH + "testImage.jpg";
             case WATER_LEAK:
-                return ALERT_IMAGE_PATH + "testImage.jpg";
+                return imagePath;
+            //return ALERT_IMAGE_PATH + "testImage.jpg";
             case DEVICE_OVERHEAT:
-                return ALERT_IMAGE_PATH + "testImage.jpg";
+                return imagePath;
+            //return ALERT_IMAGE_PATH + "testImage.jpg";
             default:
-                return ALERT_IMAGE_PATH + "testImage.jpg";
+                return imagePath;
+            //return ALERT_IMAGE_PATH + "testImage.jpg";
         }
     }
 
