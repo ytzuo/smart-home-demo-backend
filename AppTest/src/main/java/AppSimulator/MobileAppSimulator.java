@@ -5,8 +5,10 @@ import IDL.*;
 import com.zrdds.topic.Topic;
 import IDL.EnergyReportTypeSupport;
 import IDL.VehicleHealthReportTypeSupport;
+import IDL.AIVehicleHealthReportTypeSupport;
 import AppSimulator.DDS.EnergyReportSubscriber;
 import AppSimulator.DDS.VehicleHealthReportSubscriber;
+import AppSimulator.DDS.AIHealthReportSubscriber;
 import IDL.EnergyReport;
 import IDL.VehicleHealthReport;
 import AppSimulator.DDS.MediaSubscriber;
@@ -31,6 +33,8 @@ public class MobileAppSimulator {
     private VehicleHealthReport latestVehicleHealthReport;
     // 能耗趋势图订阅器
     private ReportMediaSubscriber reportMediaSubscriber;
+    // AI健康报告订阅器
+    private AIHealthReportSubscriber aiHealthReportSubscriber;
     public MobileAppSimulator() {
         loadLibrary();
         running = new AtomicBoolean(true);
@@ -53,6 +57,8 @@ public class MobileAppSimulator {
         // 注册能耗报告和车辆健康报告类型
         EnergyReportTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "EnergyReport");
         VehicleHealthReportTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "VehicleHealthReport");
+        // 注册AI健康报告类型
+        AIVehicleHealthReportTypeSupport.get_instance().register_type(participant.getDomainParticipant(), "AIVehicleHealthReport");
 
         // 创建Topic
         Topic commandTopic = participant.createTopic("Command", CommandTypeSupport.get_instance());
@@ -69,6 +75,8 @@ public class MobileAppSimulator {
         // 新增：创建能耗报告和车辆健康报告 Topic
         Topic energyReportTopic = participant.createTopic("EnergyReport", EnergyReportTypeSupport.get_instance());
         Topic vehicleHealthTopic = participant.createTopic("VehicleHealthReport", VehicleHealthReportTypeSupport.get_instance());
+        // 创建AI健康报告 Topic
+        Topic aiHealthReportTopic = participant.createTopic("AIVehicleHealthReport", AIVehicleHealthReportTypeSupport.get_instance());
 
         // 初始化Publisher和Subscriber
         commandPublisher = new CommandPublisher();
@@ -125,6 +133,15 @@ public class MobileAppSimulator {
         } else {
             System.err.println("车辆健康报告监听初始化失败");
         }
+        
+        // 初始化AI健康报告订阅器
+        aiHealthReportSubscriber = new AIHealthReportSubscriber();
+        if (aiHealthReportSubscriber.start(participant.getSubscriber(), aiHealthReportTopic)) {
+            System.out.println("AI健康报告监听已启动");
+        } else {
+            System.err.println("AI健康报告监听初始化失败");
+        }
+        
         System.out.println("DDS 初始化完成");
     }
 
@@ -167,6 +184,7 @@ public class MobileAppSimulator {
         System.out.println(" ac-on.  (ac_on)");
         System.out.println(" ac-off. (ac_off)");
         System.out.println(" e. 查看健康报告");
+        System.out.println(" ai. 请求AI健康分析报告");
         System.out.print("请输入车辆命令> ");
         String action = scanner.nextLine();
         //sendCommand("car", action);
@@ -195,6 +213,10 @@ public class MobileAppSimulator {
             case "e":
                 displayVehicleHealthReport();
                 break;  // 状态会通过DDS自动更新
+            case "ai":
+                System.out.println("正在请求AI健康分析报告...");
+                sendCommand("car", "car");
+                break;
             default:
                 System.out.println("无效命令");
         }

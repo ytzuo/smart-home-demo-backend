@@ -1,6 +1,8 @@
 import CarSimulator.DDS.*;
 import CarSimulator.VehicleHealthManager;
+import CarSimulator.DDS.AIHealthReportPublisher;
 import IDL.*;
+import IDL.AIVehicleHealthReportTypeSupport;
 import com.zrdds.topic.Topic;
 
 import javax.imageio.ImageIO;
@@ -30,6 +32,7 @@ public class CarSimulator {
     private StatusPublisher statusPublisher;
     private VehicleHealthPublisher vehicleHealthPublisher;
     private MediaPublisher mediaPublisher;
+    private AIHealthReportPublisher aiHealthReportPublisher;
 
     // Schedulers
     private ScheduledExecutorService statusUpdater; // For realistic status changes
@@ -165,6 +168,7 @@ public class CarSimulator {
             Topic commandTopic = ddsParticipant.createTopic("Command", CommandTypeSupport.get_instance());
             Topic vehicleStatusTopic = ddsParticipant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
             Topic vehicleHealthTopic = ddsParticipant.createTopic("VehicleHealthReport", VehicleHealthReportTypeSupport.get_instance());
+            Topic aiHealthReportTopic = ddsParticipant.createTopic("AIVehicleHealthReport", AIVehicleHealthReportTypeSupport.get_instance());
 
             // 新增：创建VehicleMedia主题
             System.out.println("[CarSimulator] 创建VehicleMedia主题");
@@ -184,6 +188,10 @@ public class CarSimulator {
 
             vehicleHealthPublisher = new VehicleHealthPublisher();
             vehicleHealthPublisher.start(ddsParticipant.getPublisher(), vehicleHealthTopic);
+
+            // 初始化AI健康报告发布器
+            aiHealthReportPublisher = new AIHealthReportPublisher();
+            aiHealthReportPublisher.start(ddsParticipant.getPublisher(), aiHealthReportTopic);
 
             // 新增：初始化媒体发布器
             initializeMediaPublisher();
@@ -315,6 +323,7 @@ public class CarSimulator {
         CommandTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "Command");
         VehicleStatusTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "VehicleStatus");
         VehicleHealthReportTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "VehicleHealthReport");
+        AIVehicleHealthReportTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "AIVehicleHealthReport");
         // 新增：注册AlertMedia类型
         AlertMediaTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "AlertMedia");
         System.out.println("[CarSimulator] DDS类型注册完成");
@@ -367,6 +376,43 @@ public class CarSimulator {
                 break;
             case"get_status":
                 reportCurrentStatus();
+                break;
+            case "car":
+                // 处理AI健康分析请求
+                System.out.println("[CarSimulator] 接收到AI健康分析请求，开始执行分析...");
+                analyzeVehicleHealth();
+                break;
+            case "analyze_health":
+                System.out.println("[CarSimulator] 执行健康分析命令 - 调用大模型API");
+                // 获取最新的健康报告
+                VehicleHealthReport healthReport = vehicleHealthManager.generateReport();
+                if (healthReport != null) {
+                    System.out.println("[CarSimulator] 车辆健康报告生成完成，开始AI分析...");
+                    
+                    // 异步发布AI健康分析报告
+                    long startTime = System.currentTimeMillis();
+                    aiHealthReportPublisher.analyzeAndPublishHealthReportAsync(healthReport)
+                        .thenAccept(success -> {
+                            long endTime = System.currentTimeMillis();
+                            System.out.println("[CarSimulator] AI分析总耗时: " + (endTime - startTime) + "ms");
+                            
+                            if (success) {
+                                System.out.println("[CarSimulator] ✅ 大模型AI健康分析报告发布成功");
+                            } else {
+                                System.err.println("[CarSimulator] ❌ 大模型AI健康分析报告发布失败");
+                            }
+                        })
+                        .exceptionally(throwable -> {
+                            long endTime = System.currentTimeMillis();
+                            System.err.println("[CarSimulator] AI健康分析异步处理失败，耗时: " + (endTime - startTime) + "ms");
+                            System.err.println("[CarSimulator] 错误详情: " + throwable.getMessage());
+                            throwable.printStackTrace();
+                            return null;
+                        });
+                    System.out.println("[CarSimulator] AI健康分析请求已提交，正在后台处理...");
+                } else {
+                    System.err.println("[CarSimulator] 无法获取车辆健康报告");
+                }
                 break;
             default:
                 System.out.println("[CarSimulator] 未知命令: " + action);
@@ -448,6 +494,46 @@ public class CarSimulator {
         fuelPercent = 100.0f;
         System.out.println("[CarSimulator] 加油完成，当前油量: 100%");
         statusPublisher.updateFuelLevel(fuelPercent);
+    }
+
+    /**
+     * 分析车辆健康状况
+     * 获取最新的车辆健康报告并调用AI进行分析
+     */
+    private void analyzeVehicleHealth() {
+        try {
+            System.out.println("[CarSimulator] 开始分析车辆健康状况...");
+            
+            // 检查AI健康报告发布器是否已初始化
+            if (aiHealthReportPublisher == null) {
+                System.err.println("[CarSimulator] AI健康报告发布器未初始化");
+                return;
+            }
+            
+            // 获取最新的车辆健康报告
+            VehicleHealthReport latestReport = vehicleHealthManager.getLatestReport();
+            
+            if (latestReport == null) {
+                System.out.println("[CarSimulator] 没有可用的车辆健康报告，先生成一份新报告...");
+                // 如果没有最新报告，先生成一份
+                latestReport = vehicleHealthManager.generateReport();
+                // 发布健康报告
+                vehicleHealthPublisher.publish(latestReport);
+            }
+            
+            // 调用AI分析并发布结果
+            boolean success = aiHealthReportPublisher.analyzeAndPublishHealthReport(latestReport);
+            
+            if (success) {
+                System.out.println("[CarSimulator] ✅ 车辆健康分析完成并已发布AI报告");
+            } else {
+                System.err.println("[CarSimulator] ❌ 车辆健康分析失败");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("[CarSimulator] 分析车辆健康状况时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {

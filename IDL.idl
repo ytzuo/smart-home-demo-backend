@@ -81,13 +81,21 @@ typedef sequence<octet> Blob;
     };
 
     struct EnergyRawData {
-    		string deviceId;
-    		string deviceType;
-    		sequence<float> currentPowerSeq;
-    		sequence<float> dailyConsumptionSeq;
-    		sequence<float> weeklyConsumptionSeq;
-    		sequence<string> timeSeq;
-    		string timeStamp;
+    	string deviceId;
+    	string deviceType;
+    	sequence<float> currentPowerSeq;
+    	sequence<float> dailyConsumptionSeq;
+        sequence<float> weeklyConsumptionSeq;
+    	sequence<string> timeSeq;
+    	string timeStamp;
+    };
+
+    struct AIVehicleHealthReport {
+        string vehicleId;           // 车辆唯一ID
+        string reportContent;       // 大模型生成的健康报告内容（完整的文本报告）
+        string reportId;            // 报告唯一标识
+        string generationModel;     // 使用的AI模型名称（如"spark-x1"）
+        string timeStamp;           // 报告生成时间戳
     };
 };
 

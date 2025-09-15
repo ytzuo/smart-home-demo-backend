@@ -12,6 +12,7 @@ public class VehicleHealthManager {
 
     private final String vehicleId;
     private final Random random = new Random();
+    private VehicleHealthReport latestReport; // 保存最新的车辆健康报告
 
     public VehicleHealthManager(String vehicleId) {
         this.vehicleId = vehicleId;
@@ -54,6 +55,9 @@ public class VehicleHealthManager {
 
         report.nextMaintenance = calculateNextMaintenance(report.componentStatuses);
 
+        // 保存最新报告
+        this.latestReport = report;
+        
         return report;
     }
 
@@ -119,5 +123,21 @@ public class VehicleHealthManager {
         Date now = new Date();
         Date maintenanceDate = new Date(now.getTime() + (long) daysToAdd * 24 * 60 * 60 * 1000);
         return new SimpleDateFormat("yyyy-MM-dd").format(maintenanceDate);
+    }
+
+    /**
+     * 获取最新的车辆健康报告
+     * @return 最新的车辆健康报告，如果还没有生成过报告则返回null
+     */
+    public VehicleHealthReport getLatestReport() {
+        return latestReport;
+    }
+
+    /**
+     * 检查是否有可用的健康报告
+     * @return 如果有最新报告返回true，否则返回false
+     */
+    public boolean hasLatestReport() {
+        return latestReport != null;
     }
 }
