@@ -19,7 +19,7 @@ import java.io.FileInputStream;
 
 public class CarSimulatorAlert {
     private static final String ALERT_TOPIC = "Alert";
-    private static final String ALERT_MEDIA_TOPIC = "AlertMedia";;
+    private static final String ALERT_MEDIA_TOPIC = "AlertMedia";
     private static final String VEHICLE_ALERT_MEDIA_PATH = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
     private AlertDataWriter alertWriter;
     private DdsParticipant ddsParticipant;
@@ -249,7 +249,19 @@ public class CarSimulatorAlert {
             System.out.printf("[CarSimulatorAlert] 报警已发送: %s - %s%n", 
                 alertType.getDescription(), message);
             System.out.printf("[CarSimulatorAlert] 🔢  生成报警ID: %d, this.alert_id: %d%n", alertId, this.alert_id);
-            // -- 原有的图片发送逻辑已移除,改为独立的定时发送任务 --
+            //TODO 添加图片发送逻辑
+            int imageAlertId = (int) (System.currentTimeMillis() % 1000000);
+            String deviceId = "car_001";
+            String deviceType = "car";
+            int mediaType = 1;
+
+            byte[] mediaData = getSampleImageData(CarAlertType.DOOR_UNLOCKED);
+            if (mediaData != null && mediaData.length > 8) {
+                System.out.printf("[CarSimulatorAlert] 定时发送车辆图片 (ID: %d)...\n", imageAlertId);
+                sendMedia(deviceId, deviceType, mediaType, mediaData, imageAlertId);
+            } else {
+                System.out.println("[CarSimulatorAlert] 无法获取用于定时发送的图片，跳过本次发送。");
+            }
 
         } catch (Exception e) {
             System.err.println("[CarSimulatorAlert] 发送报警失败: " + e.getMessage());
