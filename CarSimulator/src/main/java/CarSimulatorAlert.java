@@ -19,7 +19,6 @@ import java.io.FileInputStream;
 
 public class CarSimulatorAlert {
     private static final String ALERT_TOPIC = "Alert";
-    // 修改ALERT_MEDIA_TOPIC为AlertMedia
     private static final String ALERT_MEDIA_TOPIC = "AlertMedia";
     private AlertDataWriter alertWriter;
     private DdsParticipant ddsParticipant;
@@ -149,11 +148,10 @@ public class CarSimulatorAlert {
         }, 0, 10, TimeUnit.SECONDS);
 
         // 新增：启动图片定时发送任务（每15秒一次）
-        imageSenderScheduler = Executors.newSingleThreadScheduledExecutor();
-        imageSenderScheduler.scheduleWithFixedDelay(this::sendPeriodicImage, 0, 15, TimeUnit.SECONDS);
-        
-        System.out.println("[CarSimulatorAlert] 车辆状态监控已启动");
-        System.out.println("[CarSimulatorAlert] 图片定时发送服务已启动");
+//        imageSenderScheduler = Executors.newSingleThreadScheduledExecutor();
+//        imageSenderScheduler.scheduleWithFixedDelay(this::sendPeriodicImage, 0, 15, TimeUnit.SECONDS);
+//        System.out.println("[CarSimulatorAlert] 车辆状态监控已启动");
+//        System.out.println("[CarSimulatorAlert] 图片定时发送服务已启动");
     }
     
     public void stopMonitoring() {
@@ -258,28 +256,28 @@ public class CarSimulatorAlert {
     }
 
     // 新增：定时发送图片的方法
-    private void sendPeriodicImage() {
-        try {
-            // 为本次图片发送生成一个唯一的ID，即使没有实际的文本报警
-            int imageAlertId = (int) (System.currentTimeMillis() % 1000000);
-            String deviceId = "car_001";
-            String deviceType = "car";
-            int mediaType = 1; // 1表示图片
-
-            // 获取一张默认图片数据
-            // 这里使用一个默认的报警类型来获取图片，因为当前所有类型都指向同一张图
-            byte[] mediaData = getSampleImageData(CarAlertType.DOOR_UNLOCKED);
-
-            if (mediaData != null && mediaData.length > 8) { // 检查是否是有效的图片数据，而不是默认的空数据
-                System.out.printf("[CarSimulatorAlert] 定时发送车辆图片 (ID: %d)...\n", imageAlertId);
-                sendMedia(deviceId, deviceType, mediaType, mediaData, imageAlertId);
-            } else {
-                System.out.println("[CarSimulatorAlert] 无法获取用于定时发送的图片，跳过本次发送。");
-            }
-        } catch (Exception e) {
-            System.err.println("[CarSimulatorAlert] 定时发送图片时发生错误: " + e.getMessage());
-        }
-    }
+//    private void sendPeriodicImage() {
+//        try {
+//            // 为本次图片发送生成一个唯一的ID，即使没有实际的文本报警
+//            int imageAlertId = (int) (System.currentTimeMillis() % 1000000);
+//            String deviceId = "car_001";
+//            String deviceType = "car";
+//            int mediaType = 1; // 1表示图片
+//
+//            // 获取一张默认图片数据
+//            // 这里使用一个默认的报警类型来获取图片，因为当前所有类型都指向同一张图
+//            byte[] mediaData = getSampleImageData(CarAlertType.DOOR_UNLOCKED);
+//
+//            if (mediaData != null && mediaData.length > 8) { // 检查是否是有效的图片数据，而不是默认的空数据
+//                System.out.printf("[CarSimulatorAlert] 定时发送车辆图片 (ID: %d)...\n", imageAlertId);
+//                sendMedia(deviceId, deviceType, mediaType, mediaData, imageAlertId);
+//            } else {
+//                System.out.println("[CarSimulatorAlert] 无法获取用于定时发送的图片，跳过本次发送。");
+//            }
+//        } catch (Exception e) {
+//            System.err.println("[CarSimulatorAlert] 定时发送图片时发生错误: " + e.getMessage());
+//        }
+//    }
 
     // 新增：发送媒体数据的方法
     private boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {

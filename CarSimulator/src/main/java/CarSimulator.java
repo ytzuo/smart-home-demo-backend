@@ -1,14 +1,15 @@
-import CarSimulator.DDS.CommandSubscriber;
-import CarSimulator.DDS.DdsParticipant;
-import CarSimulator.DDS.StatusPublisher;
-import CarSimulator.DDS.VehicleHealthPublisher;
+import CarSimulator.DDS.*;
 import CarSimulator.VehicleHealthManager;
-import IDL.Command;
-import IDL.CommandTypeSupport;
-import IDL.VehicleHealthReport;
-import IDL.VehicleHealthReportTypeSupport;
-import IDL.VehicleStatusTypeSupport;
+import IDL.*;
 import com.zrdds.topic.Topic;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -18,13 +19,16 @@ import java.util.concurrent.TimeUnit;
 
 public class CarSimulator {
     private static final String VEHICLE_ID = "car_001";
+    private static final String VEHICLE_MEDIA_TOPIC = "VehicleMedia";
     private static boolean hasLoad = false;
+    private Topic vehicleMediaTopic;
 
     // DDS Components
     private DdsParticipant ddsParticipant;
     private CommandSubscriber commandSubscriber;
     private StatusPublisher statusPublisher;
     private VehicleHealthPublisher vehicleHealthPublisher;
+    private MediaPublisher mediaPublisher;
 
     // Schedulers
     private ScheduledExecutorService statusUpdater; // For realistic status changes
@@ -161,6 +165,15 @@ public class CarSimulator {
             Topic vehicleStatusTopic = ddsParticipant.createTopic("VehicleStatus", VehicleStatusTypeSupport.get_instance());
             Topic vehicleHealthTopic = ddsParticipant.createTopic("VehicleHealthReport", VehicleHealthReportTypeSupport.get_instance());
 
+            // 新增：创建VehicleMedia主题
+            System.out.println("[CarSimulator] 创建VehicleMedia主题");
+            vehicleMediaTopic = ddsParticipant.createTopic(VEHICLE_MEDIA_TOPIC, AlertMediaTypeSupport.get_instance());
+            if (vehicleMediaTopic == null) {
+                System.err.println("[CarSimulator] 创建VehicleMedia主题失败");
+            } else {
+                System.out.println("[CarSimulator] VehicleMedia主题创建成功");
+            }
+
             commandSubscriber = new CommandSubscriber();
             commandSubscriber.setCommandHandler(this::handleCommand);
             commandSubscriber.start(ddsParticipant.getSubscriber(), commandTopic);
@@ -171,6 +184,9 @@ public class CarSimulator {
             vehicleHealthPublisher = new VehicleHealthPublisher();
             vehicleHealthPublisher.start(ddsParticipant.getPublisher(), vehicleHealthTopic);
 
+            // 新增：初始化媒体发布器
+            initializeMediaPublisher();
+
             alertSystem.initialize(ddsParticipant, this);
             alertSystem.startMonitoring();
 
@@ -179,16 +195,129 @@ public class CarSimulator {
             System.out.println("[CarSimulator] DDS初始化完成");
         } catch (Exception e) {
             System.err.println("[CarSimulator] DDS初始化失败: " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("DDS Initialization failed", e);
         }
     }
 
+    //初始化媒体发布器的方法
+    private void initializeMediaPublisher() {
+        try {
+            System.out.println("[CarSimulator] 开始初始化车辆媒体发布器");
+
+            if (ddsParticipant == null) {
+                System.err.println("[CarSimulator] DDS Participant为null");
+                return;
+            }
+
+            if (ddsParticipant.getPublisher() == null) {
+                System.err.println("[CarSimulator] DDS Publisher为null");
+                return;
+            }
+
+            if (vehicleMediaTopic == null) {
+                System.err.println("[CarSimulator] VehicleMedia主题为null");
+                return;
+            }
+
+            // 注册AlertMedia类型
+            System.out.println("[CarSimulator] 注册AlertMedia类型");
+            AlertMediaTypeSupport.get_instance().register_type(
+                    ddsParticipant.getDomainParticipant(), "AlertMedia");
+
+            // 初始化MediaPublisher
+            System.out.println("[CarSimulator] 创建MediaPublisher实例");
+            mediaPublisher = new MediaPublisher();
+
+            System.out.println("[CarSimulator] 启动MediaPublisher");
+            boolean started = mediaPublisher.start(ddsParticipant.getPublisher(), vehicleMediaTopic);
+
+            if (started) {
+                System.out.println("[CarSimulator] 车辆媒体发布器初始化成功");
+            } else {
+                System.err.println("[CarSimulator] 车辆媒体发布器初始化失败");
+                mediaPublisher = null;
+            }
+        } catch (Exception e) {
+            System.err.println("[CarSimulator] 初始化车辆媒体发布器时发生错误: " + e.getMessage());
+            e.printStackTrace();
+            mediaPublisher = null;
+        }
+    }
+
+    /**
+     * 在图片右下角添加时间戳
+     * @param originalImage 原始图片数据
+     * @return 添加时间戳后的图片数据
+     */
+    private byte[] addTimestampToImage(byte[] originalImage) {
+        try {
+            // 将字节数组转换为BufferedImage
+            ByteArrayInputStream bais = new ByteArrayInputStream(originalImage);
+            BufferedImage image = ImageIO.read(bais);
+
+            // 创建图形上下文
+            Graphics2D g2d = image.createGraphics();
+
+            // 设置字体和颜色
+            g2d.setFont(new Font("Arial", Font.BOLD, 20));
+            g2d.setColor(Color.WHITE);
+
+            // 设置抗锯齿
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // 获取当前时间
+            String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+
+            // 计算文本尺寸
+            FontMetrics fm = g2d.getFontMetrics();
+            int textWidth = fm.stringWidth(timestamp);
+            int textHeight = fm.getHeight();
+
+            // 设置文本位置（右下角）
+            int x = image.getWidth() - textWidth - 10; // 距离右边10像素
+            int y = image.getHeight() - 10; // 距离底部10像素
+
+            // 添加黑色背景以增强可读性
+            g2d.setColor(Color.BLACK);
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f)); // 半透明背景
+            g2d.fillRect(x - 5, y - textHeight + fm.getDescent(), textWidth + 10, textHeight);
+
+            // 绘制白色时间戳文本
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f)); // 不透明文本
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(timestamp, x, y);
+
+            // 释放资源
+            g2d.dispose();
+
+            // 将修改后的图片转换回字节数组
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            String formatName = "jpg";
+            if (originalImage.length > 4 &&
+                    (originalImage[0] == (byte) 0x89 && originalImage[1] == (byte) 0x50 &&
+                            originalImage[2] == (byte) 0x4E && originalImage[3] == (byte) 0x47)) {
+                formatName = "png"; // 检测PNG格式
+            }
+            ImageIO.write(image, formatName, baos);
+
+            return baos.toByteArray();
+        } catch (Exception e) {
+            System.err.println("[CarSimulator] 添加时间戳到图片时发生错误: " + e.getMessage());
+            // 出错时返回原始图片
+            return originalImage;
+        }
+    }
+
     private void registerDdsTypes() {
+        System.out.println("[CarSimulator] 注册DDS类型");
         CommandTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "Command");
         VehicleStatusTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "VehicleStatus");
         VehicleHealthReportTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "VehicleHealthReport");
+        // 新增：注册AlertMedia类型
+        AlertMediaTypeSupport.get_instance().register_type(ddsParticipant.getDomainParticipant(), "AlertMedia");
+        System.out.println("[CarSimulator] DDS类型注册完成");
     }
-
     private void handleCommand(Command command) {
         if (command == null || command.deviceType == null || command.action == null) {
             System.err.println("[CarSimulator] 接收到无效命令");
@@ -320,6 +449,74 @@ public class CarSimulator {
         statusPublisher.updateFuelLevel(fuelPercent);
     }
 
+    private boolean sendMedia(String deviceId, String deviceType, int mediaType, byte[] fileData, int alertId) {
+        if (mediaPublisher == null) {
+            System.err.println("[CarSimulator] 媒体发布器未初始化或初始化失败");
+            return false;
+        }
+
+        boolean result = mediaPublisher.publishMedia(deviceId, deviceType, mediaType, fileData, alertId);
+        if (!result) {
+            System.err.println("[CarSimulator] 媒体数据发送失败");
+        }
+        return result;
+    }
+
+    // 获取定时发送的图片数据
+    private byte[] getPeriodicImageData() {
+        try {
+            // 使用固定的图片路径
+            //TODO 根据自己设备修改图片路径
+            String imagePath = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\testImage.jpg";
+            File imageFile = new File(imagePath);
+
+            if (imageFile.exists() && imageFile.isFile()) {
+                byte[] data = new byte[(int) imageFile.length()];
+                try (FileInputStream fis = new FileInputStream(imageFile)) {
+                    fis.read(data);
+                }
+                // 在图片上添加时间戳
+                return addTimestampToImage(data);
+            } else {
+                // 如果文件不存在，返回一个默认的图片数据
+                System.out.println("[CarSimulator] 未找到图片文件: " + imagePath);
+                // 返回一个简单的示例数据（PNG文件头）并添加时间戳
+                byte[] defaultImage = new byte[]{(byte) 0x89, (byte) 0x50, (byte) 0x4E, (byte) 0x47, (byte) 0x0D, (byte) 0x0A, (byte) 0x1A, (byte) 0x0A};
+                return addTimestampToImage(defaultImage);
+            }
+        } catch (Exception e) {
+            System.err.println("[CarSimulator] 获取图片数据失败: " + e.getMessage());
+            return new byte[0];
+        }
+    }
+
+    private void sendVehicleStatusImage() {
+        try {
+            // 生成一个唯一的ID用于本次图片发送
+            int imageAlertId = (int) (System.currentTimeMillis() % 1000000);
+            String deviceId = "car_001";
+            String deviceType = "car";
+            int mediaType = 1; // 1表示图片
+
+            // 获取图片数据
+            byte[] mediaData = getPeriodicImageData();
+
+            if (mediaData != null && mediaData.length > 8) { // 检查是否是有效的图片数据
+                System.out.printf("[CarSimulator] 发送车辆状态图片 (ID: %d)...\n", imageAlertId);
+                boolean result = sendMedia(deviceId, deviceType, mediaType, mediaData, imageAlertId);
+                if (result) {
+                    System.out.println("[CarSimulator] 车辆状态图片发送成功");
+                } else {
+                    System.out.println("[CarSimulator] 车辆状态图片发送失败");
+                }
+            } else {
+                System.out.println("[CarSimulator] 无法获取有效的图片数据，跳过本次发送。");
+            }
+        } catch (Exception e) {
+            System.err.println("[CarSimulator] 发送车辆状态图片时发生错误: " + e.getMessage());
+        }
+    }
+
     private void startStatusReporting() {
         statusReporter = Executors.newSingleThreadScheduledExecutor();
 
@@ -362,7 +559,10 @@ public class CarSimulator {
             String currentTimeStamp = getCurrentTimeStamp();
             System.out.println("[CarSimulator] 发布车辆状态: engineOn=" + engineOn + ", doorsLocked=" + doorsLocked + ", acOn=" + acOn + ", fuelPercent=" + fuelPercent + ", location=" + location + ", timeStamp=" + currentTimeStamp);
             statusPublisher.publishVehicleStatus(engineOn, doorsLocked, acOn, fuelPercent, location, currentTimeStamp);
-            
+
+            // 发送车辆状态图片
+            sendVehicleStatusImage();
+
             // 更新内部状态的时间戳
             this.timeStamp = currentTimeStamp;
         } catch (Exception e) {
