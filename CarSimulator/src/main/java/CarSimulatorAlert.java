@@ -318,17 +318,24 @@ public class CarSimulatorAlert {
         // 这里只是一个示例实现，实际应用中应该根据不同的报警类型返回不同的图片路径
         // 请根据实际环境修改图片路径
 
-        String basePath = VEHICLE_ALERT_MEDIA_PATH;
+        //String basePath = VEHICLE_ALERT_MEDIA_PATH;
+        String projectDir = System.getProperty("user.dir");
+        String imagePath = projectDir + File.separator +"src"+File.separator+"main"+File.separator+ "resources" + File.separator + "images" + File.separator + "testImage.jpg";
+
 
         switch (alertType) {
             case LOW_FUEL:
-                return basePath + "testImage.jpg";
+                return imagePath;
+                //return basePath + "testImage.jpg";
             case ENGINE_OVERHEAT:
-                return basePath + "testImage.jpg";
+                return imagePath;
+            //return basePath + "testImage.jpg";
             case DOOR_UNLOCKED:
-                return basePath + "testImage.jpg";
+                return imagePath;
+            //return basePath + "testImage.jpg";
             default:
-                return basePath + "testImage.jpg";
+                return imagePath;
+            //return basePath + "testImage.jpg";
 
         }
     }

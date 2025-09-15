@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 public class CarSimulator {
     private static final String VEHICLE_ID = "car_001";
     private static final String VEHICLE_MEDIA_TOPIC = "VehicleMedia";
-    private static final String VEHICLE_MEDIA_PATH = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
+    private static final String VEHICLE_MEDIA_PATH = "resources/images/";
     private static boolean hasLoad = false;
     private Topic vehicleMediaTopic;
 
@@ -466,7 +466,9 @@ public class CarSimulator {
     // 获取定时发送的图片数据
     private byte[] getPeriodicImageData() {
         try {
-            String imagePath = VEHICLE_MEDIA_PATH + "testImage.jpg";
+            // 构建相对于项目根目录的完整路径
+            String projectDir = System.getProperty("user.dir");
+            String imagePath = projectDir + File.separator +"src"+File.separator+"main"+File.separator+ "resources" + File.separator + "images" + File.separator + "testImage.jpg";
             File imageFile = new File(imagePath);
 
             if (imageFile.exists() && imageFile.isFile()) {
