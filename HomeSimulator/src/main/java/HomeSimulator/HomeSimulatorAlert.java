@@ -69,6 +69,7 @@ public class HomeSimulatorAlert {
         }
     }
 
+    private static final String ALERT_IMAGE_PATH = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
     private Publisher publisher;
     private Topic homeStatusTopic;
     private HomeStatusDataWriter homeStatusWriter;
@@ -360,17 +361,17 @@ public class HomeSimulatorAlert {
         // 这里只是一个示例实现
         switch (alertType) {
             case FIRE:
-                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
+                return ALERT_IMAGE_PATH + "testImage.jpg";
             case INTRUSION:
-                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
+                return ALERT_IMAGE_PATH + "testImage.jpg";
             case GAS_LEAK:
-                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
+                return ALERT_IMAGE_PATH + "testImage.jpg";
             case WATER_LEAK:
-                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
+                return ALERT_IMAGE_PATH + "testImage.jpg";
             case DEVICE_OVERHEAT:
-                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
+                return ALERT_IMAGE_PATH + "testImage.jpg";
             default:
-                return "C:\\Users\\zz\\Desktop\\个人文件\\图\\OIP-C (4).jpg";
+                return ALERT_IMAGE_PATH + "testImage.jpg";
         }
     }
 

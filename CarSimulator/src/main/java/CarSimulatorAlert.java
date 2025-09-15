@@ -19,7 +19,8 @@ import java.io.FileInputStream;
 
 public class CarSimulatorAlert {
     private static final String ALERT_TOPIC = "Alert";
-    private static final String ALERT_MEDIA_TOPIC = "AlertMedia";
+    private static final String ALERT_MEDIA_TOPIC = "AlertMedia";;
+    private static final String VEHICLE_ALERT_MEDIA_PATH = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
     private AlertDataWriter alertWriter;
     private DdsParticipant ddsParticipant;
     private Alert alert;
@@ -317,7 +318,7 @@ public class CarSimulatorAlert {
         // 这里只是一个示例实现，实际应用中应该根据不同的报警类型返回不同的图片路径
         // 请根据实际环境修改图片路径
 
-        String basePath = "C:\\Users\\Xiao_Chen\\Pictures\\image_IO\\";
+        String basePath = VEHICLE_ALERT_MEDIA_PATH;
 
         switch (alertType) {
             case LOW_FUEL:
