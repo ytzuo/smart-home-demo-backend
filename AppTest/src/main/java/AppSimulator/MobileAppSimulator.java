@@ -230,6 +230,8 @@ public class MobileAppSimulator {
         System.out.println(" d. 查看能耗报告");
         System.out.println(" e. 请求能耗趋势图");
         System.out.println(" f. 请求原始能耗数据");
+        // 新增：设备静默状态控制
+        System.out.println(" g. 设备静默状态控制");
         System.out.print("请输入家居命令> ");
         String input = scanner.nextLine().trim();
 
@@ -261,9 +263,32 @@ public class MobileAppSimulator {
                 System.out.println("正在请求设备 " + rawDeviceId + " 的原始能耗数据...");
                 sendCommand("home", "get_raw_energy_data_" + rawDeviceId);
                 break;
+            // 新增：处理设备静默状态控制
+            case "g":
+                handleDeviceSilentCommand(scanner);
+                break;
             default:
                 System.out.println("无效命令，请重新输入");
         }
+    }
+    // 新增：处理设备静默状态控制命令
+    private void handleDeviceSilentCommand(Scanner scanner) {
+        System.out.println("\n--- 设备静默状态控制 ---");
+        System.out.print("请输入要控制的设备ID (如light1/ac1): ");
+        String deviceId = scanner.nextLine().trim();
+
+        System.out.println("请选择静默状态：");
+        System.out.println(" 1. 开启静默模式 (停止发送状态和presence数据)");
+        System.out.println(" 2. 关闭静默模式 (恢复数据发送)");
+        System.out.print("请选择操作(1-2)> ");
+        String choice = scanner.nextLine().trim();
+
+        boolean isSilent = choice.equals("1");
+        String command = "set_device_silent_" + deviceId + "," + isSilent;
+
+        System.out.println("正在设置设备 " + deviceId + " 的静默状态为：" + (isSilent ? "开启" : "关闭"));
+        sendCommand("home", command);
+        System.out.println("命令已发送：" + command);
     }
 
     // 能耗报告展示方法

@@ -26,6 +26,9 @@ public class FurnitureManager {
     private final AtomicBoolean running;
     private final List<StatusUpdateListener> statusListeners;
 
+    // 新增：设备静默状态跟踪Map
+    private final Map<String, Boolean> deviceSilentStatus = new ConcurrentHashMap<>();
+
     // DDS核心资源（全局唯一，供所有家具共用）
     private final Publisher ddsPublisher;
     private final Topic homeStatusTopic;
@@ -108,6 +111,34 @@ public class FurnitureManager {
     }
 
     /**
+     * 设置设备的静默状态
+     * @param deviceId 设备ID
+     * @param isSilent 是否静默（true表示不发送presence和homestatus数据）
+     * @return 设置是否成功
+     */
+    public boolean setDeviceSilentStatus(String deviceId, boolean isSilent) {
+        if (!furnitureMap.containsKey(deviceId)) {
+            System.err.println("[FurnitureManager] 设备不存在: " + deviceId);
+            return false;
+        }
+
+        deviceSilentStatus.put(deviceId, isSilent);
+        System.out.printf("[FurnitureManager] 设置设备静默状态: %s -> %s\n",
+                deviceId, isSilent ? "静默" : "正常");
+        return true;
+    }
+
+    /**
+     * 获取设备的静默状态
+     * @param deviceId 设备ID
+     * @return 设备是否静默
+     */
+    public boolean isDeviceSilent(String deviceId) {
+        return deviceSilentStatus.getOrDefault(deviceId, false);
+    }
+
+
+    /**
      * 启动管理器（开始状态监控）
      */
     public void start() {
@@ -169,6 +200,11 @@ public class FurnitureManager {
      */
     private void checkAllFurnitureStatus() {
         for (Furniture furniture : furnitureMap.values()) {
+            final String deviceId = furniture.getId();
+            // 检查设备是否静默，如果静默则跳过状态检查和上报
+            if (isDeviceSilent(deviceId)) {
+                continue;
+            }
             executorService.submit(() -> {
                 try {
                     String currentStatus = furniture.getStatus();
@@ -441,25 +477,59 @@ public class FurnitureManager {
         }
 
         try {
+            // 创建临时HomeStatus对象，只包含非静默设备
+            HomeStatus filteredHomeStatus = new HomeStatus();
+            List<Integer> nonSilentIndices = new ArrayList<>();
+
+            // 找出所有非静默设备的索引
+            for (int i = 0; i < aggregatedHomeStatus.deviceIds.length(); i++) {
+                String deviceId = aggregatedHomeStatus.deviceIds.get_at(i);
+                if (!isDeviceSilent(deviceId)) {
+                    nonSilentIndices.add(i);
+                } else {
+                    System.out.printf("[FurnitureManager] 设备 %s 处于静默状态，跳过全局状态上报\n", deviceId);
+                }
+            }
+
+            // 如果没有非静默设备，就不发送
+            if (nonSilentIndices.isEmpty()) {
+                System.out.println("[FurnitureManager] 所有设备都处于静默状态，不发送全局状态");
+                return;
+            }
+
+            // 初始化过滤后的状态数组
+            filteredHomeStatus.deviceIds.ensure_length(nonSilentIndices.size(), nonSilentIndices.size());
+            filteredHomeStatus.deviceTypes.ensure_length(nonSilentIndices.size(), nonSilentIndices.size());
+            filteredHomeStatus.deviceStatus.ensure_length(nonSilentIndices.size(), nonSilentIndices.size());
+
             // 更新时间戳
             DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            aggregatedHomeStatus.timeStamp = LocalDateTime.now().format(timestampFormatter);
+            filteredHomeStatus.timeStamp = LocalDateTime.now().format(timestampFormatter);
 
-            // 发布全局状态
+            // 填充非静默设备的状态信息
+            int index = 0;
+            for (Integer originalIndex : nonSilentIndices) {
+                filteredHomeStatus.deviceIds.set_at(index, aggregatedHomeStatus.deviceIds.get_at(originalIndex));
+                filteredHomeStatus.deviceTypes.set_at(index, aggregatedHomeStatus.deviceTypes.get_at(originalIndex));
+                filteredHomeStatus.deviceStatus.set_at(index, aggregatedHomeStatus.deviceStatus.get_at(originalIndex));
+                index++;
+            }
+
+            // 发布过滤后的全局状态
             ReturnCode_t result = homeStatusDataWriter.write(
-                aggregatedHomeStatus, 
-                InstanceHandle_t.HANDLE_NIL_NATIVE
+                    filteredHomeStatus,
+                    InstanceHandle_t.HANDLE_NIL_NATIVE
             );
-            
+
             if (result == ReturnCode_t.RETCODE_OK) {
-                System.out.println("[FurnitureManager] 全局状态定时上报成功 - " + 
-                    aggregatedHomeStatus.deviceIds.length() + " 个设备");
+                System.out.println("[FurnitureManager] 全局状态定时上报成功 - " +
+                        filteredHomeStatus.deviceIds.length() + " 个设备");
                 // 输出所有设备状态详情
                 System.out.println("[FurnitureManager] 设备状态详情:");
-                for (int i = 0; i < aggregatedHomeStatus.deviceIds.length(); i++) {
-                    String deviceId = aggregatedHomeStatus.deviceIds.get_at(i);
-                    String deviceType = aggregatedHomeStatus.deviceTypes.get_at(i);
-                    String deviceStatus = aggregatedHomeStatus.deviceStatus.get_at(i);
+                for (int i = 0; i < filteredHomeStatus.deviceIds.length(); i++) {
+                    String deviceId = filteredHomeStatus.deviceIds.get_at(i);
+                    String deviceType = filteredHomeStatus.deviceTypes.get_at(i);
+                    String deviceStatus = filteredHomeStatus.deviceStatus.get_at(i);
                     System.out.printf("[FurnitureManager]   设备ID: %s, 类型: %s, 状态: %s%n",
                             deviceId, deviceType, deviceStatus);
                 }

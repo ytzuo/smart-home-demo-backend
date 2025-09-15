@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class EnergyReportPublisher {
     private EnergyReportDataWriter writer;
     private FurnitureManager furnitureManager;
-    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean running      = new AtomicBoolean(false);
     private ScheduledExecutorService scheduler;
     private final Random random = new Random();
     // 设备能耗基础参数（用于模拟）

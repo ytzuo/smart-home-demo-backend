@@ -161,6 +161,10 @@ public class HomeSimulator {
         // 新增：注册ReportMedia类型（能耗趋势图专用）
         IDL.ReportMediaTypeSupport.get_instance().register_type(
                 ddsParticipant.getDomainParticipant(), "ReportMedia");
+        // 新增：注册EnergyRawData类型
+        EnergyRawDataTypeSupport.get_instance().register_type(
+                ddsParticipant.getDomainParticipant(), "EnergyRawData");
+
         // 创建Topic
         Topic commandTopic = ddsParticipant.createTopic(
                 "Command", CommandTypeSupport.get_instance());
@@ -253,6 +257,12 @@ public class HomeSimulator {
             // 获取所有设备状态
             List<Furniture> allDevices = furnitureManager.getAllFurniture();
             for (Furniture device : allDevices) {
+                // 检查设备是否处于静默状态，如果是则跳过发送presence数据
+                if (furnitureManager.isDeviceSilent(device.getId())) {
+                    System.out.printf("[HomeSimulator] 设备 %s(%s) 处于静默状态，跳过发送Presence数据\n",
+                            device.getName(), device.getId());
+                    continue;
+                }
                 Presence presence = new Presence();
                 presence.deviceId = device.getId();
                 presence.deviceType = device.getType();
@@ -310,6 +320,21 @@ public class HomeSimulator {
                 return;
             }
 
+            // 新增：处理设置设备静默状态命令
+            if (deviceType.equalsIgnoreCase("home") && action.startsWith("set_device_silent_")) {
+                String params = action.substring("set_device_silent_".length());
+                if (!params.isEmpty()) {
+                    String[] parts = params.split(",");
+                    if (parts.length == 2) {
+                        String deviceId = parts[0];
+                        boolean isSilent = Boolean.parseBoolean(parts[1]);
+                        boolean result = furnitureManager.setDeviceSilentStatus(deviceId, isSilent);
+                        System.out.printf("[HomeSimulator] 设置设备静默状态%s: %s -> %s\n",
+                                result ? "成功" : "失败", deviceId, isSilent ? "静默" : "正常");
+                    }
+                }
+                return;
+            }
             switch (deviceType.toLowerCase()) {
                 case "home":
                     handleHomeCommand(action);
