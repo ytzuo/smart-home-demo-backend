@@ -275,6 +275,12 @@ public class AirConditioner implements Furniture, AlertableDevice {
 
     // ======== 状态更新 ========
     public void publishStatus() {
+
+        // 检查设备是否静默，如果静默则不发送状态数据
+        if (manager != null && manager.isDeviceSilent(this.id)) {
+            System.out.printf("[AirConditioner] %s 处于静默状态，跳过状态上报\n", name);
+            return;
+        }
         if (ddsWriter == null) {
             System.err.println("[AirConditioner] DDS写入器未初始化，无法上报状态");
             return;

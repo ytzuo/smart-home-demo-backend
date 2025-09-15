@@ -329,6 +329,11 @@ public class Light implements Furniture, AlertableDevice {
      * 独立上报状态到DDS（使用标准化JSON模板，确保字符串一致性）
      */
     public void publishStatus() {
+        // 检查设备是否静默，如果静默则不发送状态数据
+        if (manager != null && manager.isDeviceSilent(this.id)) {
+            System.out.printf("[Light] %s 处于静默状态，跳过状态上报\n", name);
+            return;
+        }
         if (ddsWriter == null) {
             System.err.println("[Light] DDS写入器未初始化，无法上报状态");
             return;
